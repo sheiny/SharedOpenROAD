@@ -30,3 +30,6 @@ cmake-build-debug/
 
 coverage-output
 messages.txt
+
+tags
+Session.vim

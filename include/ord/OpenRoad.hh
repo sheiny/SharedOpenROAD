@@ -140,6 +140,10 @@ namespace stt {
 class SteinerTreeBuilder;
 }
 
+namespace tut {
+class Tutorial;
+}
+
 namespace ord {
 
 using std::string;
@@ -183,6 +187,7 @@ public:
   pdn::PdnGen *getPdnGen() { return pdngen_; }
   dst::Distributed *getDistributed() { return distributer_; }
   stt::SteinerTreeBuilder *getSteinerTreeBuilder() { return stt_builder_; }
+  tut::Tutorial* getTutorial() { return tutorial_; }
 
   // Return the bounding box of the db rows.
   odb::Rect getCore();
@@ -277,6 +282,7 @@ private:
   pdn::PdnGen *pdngen_;
   dst::Distributed *distributer_;
   stt::SteinerTreeBuilder *stt_builder_;
+  tut::Tutorial *tutorial_;
 
   std::set<Observer *> observers_;
 

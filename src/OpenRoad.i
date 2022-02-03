@@ -216,6 +216,13 @@ getSteinerTreeBuilder()
   return openroad->getSteinerTreeBuilder();
 }
 
+tut::Tutorial*
+getTutorial()
+{
+  OpenRoad *openroad = getOpenRoad();
+  return openroad->getTutorial();
+}
+
 } // namespace ord
 
 namespace sta {

@@ -10,7 +10,6 @@ OpenRoad *getOpenRoad(); // Defined in OpenRoad.i
 
 using ord::getTutorial;
 using tut::Tutorial;
-
 %}
 
 %inline %{

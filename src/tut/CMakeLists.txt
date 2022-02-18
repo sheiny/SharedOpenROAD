@@ -25,6 +25,8 @@ target_include_directories(tut
 )
 
 target_link_libraries(tut
+    utl
+    spdlog::spdlog
     OpenSTA
 )
 

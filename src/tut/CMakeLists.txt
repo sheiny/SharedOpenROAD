@@ -17,16 +17,11 @@ target_sources(tut
 target_include_directories(tut
   PUBLIC
     include
-
-  PRIVATE
-    src
-    ${ODB_HOME}/include
-    ${OPENROAD_HOME}/include
 )
 
 target_link_libraries(tut
     utl
-    spdlog::spdlog
+    odb
     OpenSTA
 )
 

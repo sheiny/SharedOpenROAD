@@ -239,7 +239,7 @@ OpenRoad::init(Tcl_Interp *tcl_interp)
   pdngen_ = makePdnGen();
   distributer_ = makeDistributed();
   stt_builder_ = makeSteinerTreeBuilder();
-  tutorial_ = makeTutorial(db_);
+  tutorial_ = makeTutorial();
 
   // Init components.
   Openroad_swig_Init(tcl_interp);

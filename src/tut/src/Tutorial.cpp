@@ -1,38 +1,33 @@
 #include "tut/Tutorial.h"
 #include "odb/db.h"
-#include <iostream>
 #include "ord/OpenRoad.hh"
+#include "utl/Logger.h"
+
+#include <iostream>
 
 namespace tut {
 
-Tutorial::Tutorial(odb::dbDatabase* db) :
-  db_(db)
+Tutorial::Tutorial() :
+  db_{ord::OpenRoad::openRoad()->getDb()},
+  logger_{ord::OpenRoad::openRoad()->getLogger()}
 {
 }
 
-//TODO implement a hello world
 void
 Tutorial::printHello()
 {
-  std::cout<<"Hello world"<<std::endl;
-
-  // utl::Logger *logger = ord::OpenRoad::openRoad()->getLogger();
-  // logger->report("heloo tiago");
+  logger_->report("Hello World.");
 }
 
-//TODO print all cell names
 void
 Tutorial::printCells()
 {
   std::cout<<"Printing all cell names:"<<std::endl;
-  //First lets get the circuit block
   auto block = db_->getChip()->getBlock();
   for(auto inst : block->getInsts())
     std::cout<<inst->getName()<<std::endl;
 }
 
-
-//TODO print all net names
 void
 Tutorial::printNets()
 {
@@ -42,7 +37,6 @@ Tutorial::printNets()
     std::cout<<inst->getName()<<std::endl;
 }
 
-//TODO print all pin names
 void
 Tutorial::printPins()
 {

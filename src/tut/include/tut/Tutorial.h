@@ -4,11 +4,15 @@ namespace odb {
   class dbDatabase;
 }
 
+namespace utl {
+  class Logger;
+}
+
 namespace tut {
 
 class Tutorial {
   public:
-    Tutorial(odb::dbDatabase* db);
+    Tutorial();
     ~Tutorial();
 
     //Print Hello World
@@ -28,6 +32,7 @@ class Tutorial {
 
   private:
     odb::dbDatabase* db_;
+    utl::Logger* logger_;
   };
 }
 

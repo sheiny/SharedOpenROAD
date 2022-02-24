@@ -12,7 +12,7 @@ namespace ord {
 
 class OpenRoad;
 
-tut::Tutorial* makeTutorial(odb::dbDatabase* db);
+tut::Tutorial* makeTutorial();
 
 void initTutorial(OpenRoad *openroad);
 

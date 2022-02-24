@@ -18,9 +18,9 @@ extern int Tut_Init(Tcl_Interp* interp);
 //All these three functions are being used in /src/OpenRoad.cc
 namespace ord {
 
-tut::Tutorial * makeTutorial(odb::dbDatabase* db)
+tut::Tutorial * makeTutorial()
 {
-  return new tut::Tutorial(db);
+  return new tut::Tutorial();
 }
 
 //This funcion will bind the calls between .tcl and .i files

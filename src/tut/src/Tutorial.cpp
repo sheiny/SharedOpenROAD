@@ -65,7 +65,35 @@ Tutorial::printPins()
 void
 Tutorial::printHPWLs()
 {
-  //Challenge :)
+  odb::dbBlock *block = db_->getChip()->getBlock();
+  for(auto net : block->getNets())
+  {
+    logger_->report("Net: "+net->getName());
+    int xll = std::numeric_limits<int>::max();
+    int yll = std::numeric_limits<int>::max();
+    int xur = std::numeric_limits<int>::min();
+    int yur = std::numeric_limits<int>::min();
+    for(auto iterm : net->getITerms())
+    {
+      int x=0, y=0;
+      const bool pinExist = iterm->getAvgXY(&x, &y);
+      if(pinExist)
+      {
+        const std::string pin_str = "Pin: "+iterm->getInst()->getName()+
+                                    ":"+iterm->getMTerm()->getName()+
+                                    " x:"+std::to_string(x)+" y:"+std::to_string(y);
+        logger_->report(pin_str);
+        xur = std::max(xur, x);
+        yur = std::max(yur, y);
+        xll = std::min(xll, x);
+        yll = std::min(yll, y);
+      }
+    }
+    const int width = std::abs(xur-xll);
+    const int height = std::abs(yur-yll);
+    const int hpwl = width + height;
+    logger_->report("HPWL: "+std::to_string(hpwl));
+  }
 }
 
 Tutorial::~Tutorial()

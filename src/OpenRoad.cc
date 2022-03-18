@@ -84,6 +84,7 @@
 #include "pdn/MakePdnGen.hh"
 #include "dst/MakeDistributed.h"
 #include "stt/MakeSteinerTreeBuilder.h"
+#include "sap/MakeSimulatedAnnealingPlacer.h"
 
 namespace sta {
 extern const char *openroad_swig_tcl_inits[];
@@ -144,6 +145,7 @@ OpenRoad::OpenRoad()
     pdngen_(nullptr),
     distributer_(nullptr),
     stt_builder_(nullptr),
+    sa_placer_(nullptr),
     threads_(1)
 {
   db_ = dbDatabase::create();
@@ -173,6 +175,7 @@ OpenRoad::~OpenRoad()
   deletePdnGen(pdngen_);
   deleteDistributed(distributer_);
   deleteSteinerTreeBuilder(stt_builder_);
+  deleteSimulatedAnnealingPlacer(sa_placer_);
   delete logger_;
 }
 
@@ -236,6 +239,7 @@ OpenRoad::init(Tcl_Interp *tcl_interp)
   pdngen_ = makePdnGen();
   distributer_ = makeDistributed();
   stt_builder_ = makeSteinerTreeBuilder();
+  sa_placer_ = makeSimulatedAnnealingPlacer();
 
   // Init components.
   Openroad_swig_Init(tcl_interp);
@@ -268,6 +272,7 @@ OpenRoad::init(Tcl_Interp *tcl_interp)
   initPdnGen(this);
   initDistributed(this);
   initSteinerTreeBuilder(this);
+  initSimulatedAnnealingPlacer(this);
 
   // Import exported commands to global namespace.
   Tcl_Eval(tcl_interp, "sta::define_sta_cmds");

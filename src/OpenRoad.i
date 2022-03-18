@@ -216,6 +216,13 @@ getSteinerTreeBuilder()
   return openroad->getSteinerTreeBuilder();
 }
 
+sap::SimulatedAnnealingPlacer*
+getSimulatedAnnealingPlacer()
+{
+  OpenRoad *openroad = getOpenRoad();
+  return openroad->getSimulatedAnnealingPlacer();
+}
+
 } // namespace ord
 
 namespace sta {

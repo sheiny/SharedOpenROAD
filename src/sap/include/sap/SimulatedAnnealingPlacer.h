@@ -18,6 +18,8 @@ public:
   void placeCells();
 
 private:
+  void generateInitialRandomPlacement();
+
   int getNetHPWL(odb::dbNet * net) const;
 
   odb::dbDatabase* db_;

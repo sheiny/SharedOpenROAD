@@ -18,6 +18,25 @@ SimulatedAnnealingPlacer::~SimulatedAnnealingPlacer()
   //clear();
 }
 
+void
+SimulatedAnnealingPlacer::generateInitialRandomPlacement()
+{
+	auto block = db_->getChip()->getBlock();
+  odb::Rect rect;
+  block->getCoreArea(rect);
+  int xCoreMin = rect.xMin();
+  int xCoreMax = rect.xMax();
+  int yCoreMin = rect.yMin();
+  int yCoreMax = rect.yMax();
+
+	for(auto inst : block->getInsts())
+	{
+		int randX = std::rand()%(xCoreMax-xCoreMin + 1) + xCoreMin;
+		int randY = std::rand()%(yCoreMax-yCoreMin + 1) + yCoreMin;
+		inst->setOrigin(randX, randY);
+	}
+}
+
 int
 SimulatedAnnealingPlacer::getNetHPWL(odb::dbNet * net) const
 {
@@ -46,6 +65,7 @@ SimulatedAnnealingPlacer::getNetHPWL(odb::dbNet * net) const
 void
 SimulatedAnnealingPlacer::placeCells()
 {
+  generateInitialRandomPlacement();
 #if 0
   Pseudo Code for Simulated Annealing
       source: https://www.youtube.com/watch?v=nKDqmTfTbAU

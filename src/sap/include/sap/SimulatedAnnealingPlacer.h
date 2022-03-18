@@ -2,6 +2,7 @@
 
 namespace odb {
   class dbDatabase;
+  class dbNet;
 }
 
 namespace utl {
@@ -14,9 +15,11 @@ public:
   SimulatedAnnealingPlacer();
   ~SimulatedAnnealingPlacer();
 
-void printHello();
+  void placeCells();
 
 private:
+  int getNetHPWL(odb::dbNet * net) const;
+
   odb::dbDatabase* db_;
   utl::Logger* logger_;
 };

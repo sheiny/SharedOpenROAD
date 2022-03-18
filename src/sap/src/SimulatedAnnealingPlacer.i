@@ -17,10 +17,10 @@ using sap::SimulatedAnnealingPlacer;
 namespace sap {
 
 void
-printHello()
+placeCells()
 {
   SimulatedAnnealingPlacer* sa_placer = getSimulatedAnnealingPlacer();
-  sa_placer->printHello();
+  sa_placer->placeCells();
 }
 
 } // namespace

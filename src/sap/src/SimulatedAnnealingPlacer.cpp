@@ -62,11 +62,36 @@ SimulatedAnnealingPlacer::getNetHPWL(odb::dbNet * net) const
   return hpwl;
 }
 
+int
+SimulatedAnnealingPlacer::total_wirelength()
+{
+  auto block = db_->getChip()->getBlock();
+  int tota_wire_lenght = 0;
+  for(auto net : block->getNets())
+  {
+    int hpwl = getNetHPWL(net);
+    tota_wire_lenght += hpwl;
+  }
+  return tota_wire_lenght;
+}
+
+void
+SimulatedAnnealingPlacer::swap_cells(odb::dbInst * cell_1, odb::dbInst * cell_2)
+{
+  int cell_1_x, cell_1__y;
+  int cell_2_x, cell_2__y;
+  cell_1->getLocation(cell_1_x, cell_1__y);
+  cell_2->getLocation(cell_2_x, cell_2__y);
+
+  cell_1->setLocation(cell_2_x, cell_2__y);
+  cell_2->setLocation(cell_1_x, cell_1__y);
+}
 void
 SimulatedAnnealingPlacer::placeCells()
 {
   generateInitialRandomPlacement();
-#if 0
+  auto block = db_->getChip()->getBlock();
+  auto cells = block->getInsts();
   Pseudo Code for Simulated Annealing
       source: https://www.youtube.com/watch?v=nKDqmTfTbAU
 
@@ -76,27 +101,40 @@ SimulatedAnnealingPlacer::placeCells()
   bool frozen = false;
   while(!frozen)
   {
+    int hpwl_beguining = total_wirelength();
     for(s=0; s<M*NumCellInsts;s++)// where M could be a big number for example 1000
     {
-      swap 2 random cell insts;
-      compute delta wirelength
-      if (delta < 0)// Good swap
+      int hpwl_before = total_wirelength();
+      
+      int cell_1_number = std::rand() % NumCellInsts;
+      int cell_2_number = std::rand() % NumCellInsts;
+      
+      auto cell_1 = cerlls[cell_1_number];
+      auto cell_2 = cerlls[cell_2_number];
+
+      swap_cells(cell_1, cell_2);
+
+      int hpwl_after = total_wirelength();
+      int deltaWL = hpwl_before - hpwl_after;
+      if (deltaWL > 0)// Good swap
       {
-        //keep the movement (swap)
+        continue;
       }
       else
       {
+        int random_uniform = std::rand();
         if (random_uniform < exp(-deltaWL/T)) //uphill climb
         {
-          //accept bad movement
+          continue;
         }
         else
         {
-          //undo movement (swap)
+          swap_cells(cell_1, cell_2);
         }
       }
     }
-    if (WL is still deacreasing)
+    int hpwl_ending = total_wirelength();
+    if ((hpwl_beguining - hpwl_ending) > 0 )
     {
       temperature *= 0.9; // cool down the temperature
     }
@@ -105,7 +143,6 @@ SimulatedAnnealingPlacer::placeCells()
       frozen = true; // reached a minimum local, let's stop
     }
   }
-#endif
 }
 
 }

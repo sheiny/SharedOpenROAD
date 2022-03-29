@@ -76,7 +76,7 @@ SimulatedAnnealingPlacer::total_wirelength()
 }
 
 void
-SimulatedAnnealingPlacer::swap_cells(odb::dbInst * cell_1, odb::dbInst * cell_2)
+SimulatedAnnealingPlacer::swap_cells(odb::dbInst* cell_1, odb::dbInst* cell_2)
 {
   int cell_1_x, cell_1__y;
   int cell_2_x, cell_2__y;
@@ -92,20 +92,29 @@ SimulatedAnnealingPlacer::placeCells()
   generateInitialRandomPlacement();
   auto block = db_->getChip()->getBlock();
   auto cells = block->getInsts();
-  int temperature = total wirelength;
+
+  int M = 1000;
+  int NumCellInsts = cells.size();
+  odb::dbInst ** cells_list;
+  int i = 0;
+  for(auto cell : block->getInsts()){
+    cells_list[i] = cell;
+    i++;
+  }
+  int temperature = total_wirelength();
   bool frozen = false;
   while(!frozen)
   {
     int hpwl_beguining = total_wirelength();
-    for(s=0; s<M*NumCellInsts;s++)// where M could be a big number for example 1000
+    for(int s=0; s<M*NumCellInsts;s++)// where M could be a big number for example 1000
     {
       int hpwl_before = total_wirelength();
       
-      int cell_1_number = std::rand() % NumCellInsts;
-      int cell_2_number = std::rand() % NumCellInsts;
+      int cell_1_number = std::rand() % (NumCellInsts - 1);
+      int cell_2_number = std::rand() % (NumCellInsts - 1);
       
-      auto cell_1 = cerlls[cell_1_number];
-      auto cell_2 = cerlls[cell_2_number];
+      auto cell_1 = cells_list[cell_1_number];
+      auto cell_2 = cells_list[cell_2_number];
 
       swap_cells(cell_1, cell_2);
 
@@ -118,7 +127,7 @@ SimulatedAnnealingPlacer::placeCells()
       else
       {
         int random_uniform = std::rand();
-        if (random_uniform < exp(-deltaWL/T)) //uphill climb
+        if (random_uniform < exp(-deltaWL/temperature)) //uphill climb
         {
           continue;
         }
@@ -138,6 +147,7 @@ SimulatedAnnealingPlacer::placeCells()
       frozen = true; // reached a minimum local, let's stop
     }
   }
+  printf("concluido");
 }
 
 }

@@ -92,11 +92,6 @@ SimulatedAnnealingPlacer::placeCells()
   generateInitialRandomPlacement();
   auto block = db_->getChip()->getBlock();
   auto cells = block->getInsts();
-  Pseudo Code for Simulated Annealing
-      source: https://www.youtube.com/watch?v=nKDqmTfTbAU
-
-  Start with a random placement
-  Initialize the temperature using the total wirelength of this random placement.
   int temperature = total wirelength;
   bool frozen = false;
   while(!frozen)

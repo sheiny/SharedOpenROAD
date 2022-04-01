@@ -90,21 +90,28 @@ void
 SimulatedAnnealingPlacer::placeCells()
 {
   generateInitialRandomPlacement();
+
+  printf("ENTROU \n");
+
   auto block = db_->getChip()->getBlock();
   auto cells = block->getInsts();
 
-  int M = 1000;
+  int M = 1;
   int NumCellInsts = cells.size();
-  odb::dbInst ** cells_list;
+  /*odb::dbInst ** cells_list;
   int i = 0;
+  printf("antes do for das celulas \n");
   for(auto cell : block->getInsts()){
     cells_list[i] = cell;
     i++;
   }
+  printf("depois do for \n");*/
   int temperature = total_wirelength();
   bool frozen = false;
+  printf("%d\n", NumCellInsts);
   while(!frozen)
   {
+     printf("dentor do while \n");
     int hpwl_beguining = total_wirelength();
     for(int s=0; s<M*NumCellInsts;s++)// where M could be a big number for example 1000
     {
@@ -113,31 +120,55 @@ SimulatedAnnealingPlacer::placeCells()
       int cell_1_number = std::rand() % (NumCellInsts - 1);
       int cell_2_number = std::rand() % (NumCellInsts - 1);
       
-      auto cell_1 = cells_list[cell_1_number];
-      auto cell_2 = cells_list[cell_2_number];
+      odb::dbInst* cell_1;
+      odb::dbInst* cell_2;
+      int k = 0;
+      int pego = 0;
+      for(auto cell : block->getInsts()){
+        if (k == cell_1_number){
+          cell_1 = cell;
+          pego += 1;
+        }
+
+        if (k == cell_2_number){
+          cell_2 = cell;
+          pego += 1;
+        }
+        if (pego == 2) {
+          break;
+        }
+         k += 1;
+      }
+     
 
       swap_cells(cell_1, cell_2);
+      //printf("swap feito \n");
 
       int hpwl_after = total_wirelength();
       int deltaWL = hpwl_before - hpwl_after;
       if (deltaWL > 0)// Good swap
       {
+        //printf("bom swap\n");
         continue;
       }
       else
       {
+       // printf("mau swap\n");
         int random_uniform = std::rand();
         if (random_uniform < exp(-deltaWL/temperature)) //uphill climb
         {
+          //printf("mau swap aceito\n");
           continue;
         }
         else
         {
           swap_cells(cell_1, cell_2);
+         /* printf("mau swap rejeitado\n");*/
         }
       }
     }
     int hpwl_ending = total_wirelength();
+    printf ("inicio : %d; fim : %d",hpwl_beguining, hpwl_ending);
     if ((hpwl_beguining - hpwl_ending) > 0 )
     {
       temperature *= 0.9; // cool down the temperature

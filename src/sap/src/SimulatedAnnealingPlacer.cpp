@@ -89,40 +89,39 @@ SimulatedAnnealingPlacer::swap_cells(odb::dbInst* cell_1, odb::dbInst* cell_2)
 void
 SimulatedAnnealingPlacer::placeCells()
 {
-  generateInitialRandomPlacement();
-
   printf("ENTROU \n");
+
+  generateInitialRandomPlacement();
 
   auto block = db_->getChip()->getBlock();
   auto cells = block->getInsts();
 
   int M = 1;
   int NumCellInsts = cells.size();
-  /*odb::dbInst ** cells_list;
-  int i = 0;
-  printf("antes do for das celulas \n");
+  
+  std::vector<odb::dbInst*>  cells_list;
+  cells_list.reserve(NumCellInsts);
+  std::cout<<"antes do for das celulas \n";
   for(auto cell : block->getInsts()){
-    cells_list[i] = cell;
-    i++;
+    cells_list.push_back(cell);
   }
-  printf("depois do for \n");*/
+  std::cout <<"depois do for \n";
+
   int temperature = total_wirelength();
   bool frozen = false;
-  printf("%d\n", NumCellInsts);
   while(!frozen)
   {
-     printf("dentor do while \n");
     int hpwl_beguining = total_wirelength();
     for(int s=0; s<M*NumCellInsts;s++)// where M could be a big number for example 1000
     {
-      int hpwl_before = total_wirelength();
+      int hpwl_before = 0;
       
       int cell_1_number = std::rand() % (NumCellInsts - 1);
       int cell_2_number = std::rand() % (NumCellInsts - 1);
       
-      odb::dbInst* cell_1;
-      odb::dbInst* cell_2;
-      int k = 0;
+      odb::dbInst* cell_1 = cells_list[cell_1_number];
+      odb::dbInst* cell_2 = cells_list[cell_2_number];
+      /*int k = 0;
       int pego = 0;
       for(auto cell : block->getInsts()){
         if (k == cell_1_number){
@@ -138,7 +137,7 @@ SimulatedAnnealingPlacer::placeCells()
           break;
         }
          k += 1;
-      }
+      }*/
      
 
       swap_cells(cell_1, cell_2);
@@ -168,7 +167,7 @@ SimulatedAnnealingPlacer::placeCells()
       }
     }
     int hpwl_ending = total_wirelength();
-    printf ("inicio : %d; fim : %d",hpwl_beguining, hpwl_ending);
+    std::cout<<"inicio : "<< hpwl_beguining <<"; fim : " << hpwl_ending << "\n";
     if ((hpwl_beguining - hpwl_ending) > 0 )
     {
       temperature *= 0.9; // cool down the temperature
@@ -178,7 +177,7 @@ SimulatedAnnealingPlacer::placeCells()
       frozen = true; // reached a minimum local, let's stop
     }
   }
-  printf("concluido");
+  std::cout<<"concluido \n";
 }
 
 }

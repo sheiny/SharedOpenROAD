@@ -89,7 +89,6 @@ SimulatedAnnealingPlacer::swap_cells(odb::dbInst* cell_1, odb::dbInst* cell_2)
 void
 SimulatedAnnealingPlacer::placeCells()
 {
-  printf("ENTROU \n");
 
   generateInitialRandomPlacement();
 
@@ -101,74 +100,80 @@ SimulatedAnnealingPlacer::placeCells()
   
   std::vector<odb::dbInst*>  cells_list;
   cells_list.reserve(NumCellInsts);
-  std::cout<<"antes do for das celulas \n";
+
   for(auto cell : block->getInsts()){
     cells_list.push_back(cell);
   }
-  std::cout <<"depois do for \n";
 
-  int temperature = total_wirelength();
+  double temperature = total_wirelength();
   bool frozen = false;
   while(!frozen)
   {
-    int hpwl_beguining = total_wirelength();
+    int hpwl_emprovement = 0;
     for(int s=0; s<M*NumCellInsts;s++)// where M could be a big number for example 1000
     {
-      int hpwl_before = 0;
-      
-      int cell_1_number = std::rand() % (NumCellInsts - 1);
-      int cell_2_number = std::rand() % (NumCellInsts - 1);
+      int hpwl_before_OPTM = 0, hpwl_after_OPT = 0;
+      int cell_1_number, cell_2_number;
+
+
+      cell_1_number = std::rand() % (NumCellInsts - 1);
+      cell_2_number = std::rand() % (NumCellInsts - 1);
       
       odb::dbInst* cell_1 = cells_list[cell_1_number];
       odb::dbInst* cell_2 = cells_list[cell_2_number];
-      /*int k = 0;
-      int pego = 0;
-      for(auto cell : block->getInsts()){
-        if (k == cell_1_number){
-          cell_1 = cell;
-          pego += 1;
-        }
 
-        if (k == cell_2_number){
-          cell_2 = cell;
-          pego += 1;
+      for (auto pin : cell_1->getITerms()) {
+        auto net = pin->getNet();
+        if (net != NULL) {
+          hpwl_before_OPTM += getNetHPWL(net);
         }
-        if (pego == 2) {
-          break;
+      }
+      for (auto pin : cell_2->getITerms()) {
+        auto net = pin->getNet();
+        if (net != NULL) {
+          hpwl_before_OPTM += getNetHPWL(net);
         }
-         k += 1;
-      }*/
+      }
      
-
       swap_cells(cell_1, cell_2);
-      //printf("swap feito \n");
 
-      int hpwl_after = total_wirelength();
-      int deltaWL = hpwl_before - hpwl_after;
-      if (deltaWL > 0)// Good swap
+      for (auto pin : cell_1->getITerms()) {
+        auto net = pin->getNet();
+        if (net != NULL) {
+          hpwl_after_OPT += getNetHPWL(net);
+        }
+      }
+
+      for (auto pin : cell_2->getITerms()) {
+        auto net = pin->getNet();
+        if (net != NULL) {
+          hpwl_after_OPT += getNetHPWL(net);
+        }
+      }
+
+      double deltaWL = hpwl_after_OPT - hpwl_before_OPTM;
+      if (deltaWL < 0)// Good swap
       {
-        //printf("bom swap\n");
+        hpwl_emprovement += deltaWL;
         continue;
       }
       else
       {
-       // printf("mau swap\n");
-        int random_uniform = std::rand();
-        if (random_uniform < exp(-deltaWL/temperature)) //uphill climb
+        int random_uniform = std::rand() ;
+        if (random_uniform < exp(-deltaWL/temperature))
         {
-          //printf("mau swap aceito\n");
+          hpwl_emprovement += deltaWL;
           continue;
         }
         else
         {
           swap_cells(cell_1, cell_2);
-         /* printf("mau swap rejeitado\n");*/
         }
       }
     }
-    int hpwl_ending = total_wirelength();
-    std::cout<<"inicio : "<< hpwl_beguining <<"; fim : " << hpwl_ending << "\n";
-    if ((hpwl_beguining - hpwl_ending) > 0 )
+
+    std::cout<<"emprovement : " << hpwl_emprovement << "\n";
+    if (hpwl_emprovement < -1000)
     {
       temperature *= 0.9; // cool down the temperature
     }

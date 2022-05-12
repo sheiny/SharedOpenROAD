@@ -21,7 +21,7 @@ SimulatedAnnealingPlacer::~SimulatedAnnealingPlacer()
 void
 SimulatedAnnealingPlacer::generateInitialRandomPlacement()
 {
-	auto block = db_->getChip()->getBlock();
+  auto block = db_->getChip()->getBlock();
   odb::Rect rect;
   block->getCoreArea(rect);
   int xCoreMin = rect.xMin();
@@ -29,151 +29,180 @@ SimulatedAnnealingPlacer::generateInitialRandomPlacement()
   int yCoreMin = rect.yMin();
   int yCoreMax = rect.yMax();
 
-	for(auto inst : block->getInsts())
-	{
-		int randX = std::rand()%(xCoreMax-xCoreMin + 1) + xCoreMin;
-		int randY = std::rand()%(yCoreMax-yCoreMin + 1) + yCoreMin;
-		inst->setOrigin(randX, randY);
-	}
+  for(auto inst : block->getInsts())
+  {
+    int randX = std::rand()%(xCoreMax-xCoreMin + 1) + xCoreMin;
+    int randY = std::rand()%(yCoreMax-yCoreMin + 1) + yCoreMin;
+    inst->setLocation(randX, randY);
+  }
 }
 
 int
 SimulatedAnnealingPlacer::getNetHPWL(odb::dbNet * net) const
 {
-	int xll = std::numeric_limits<int>::max();
-	int yll = std::numeric_limits<int>::max();
-	int xur = std::numeric_limits<int>::min();
-	int yur = std::numeric_limits<int>::min();
-	for(auto iterm : net->getITerms())
-	{
-		int x=0, y=0;
-		const bool pinExist = iterm->getAvgXY(&x, &y);
-		if(pinExist)
-		{
-			xur = std::max(xur, x);
-			yur = std::max(yur, y);
-			xll = std::min(xll, x);
-			yll = std::min(yll, y);
-		}
-	}
-	const int width = std::abs(xur-xll);
-	const int height = std::abs(yur-yll);
-	int hpwl = width + height;
+  int xll = std::numeric_limits<int>::max();
+  int yll = std::numeric_limits<int>::max();
+  int xur = std::numeric_limits<int>::min();
+  int yur = std::numeric_limits<int>::min();
+  for(auto iterm : net->getITerms())
+  {
+    int x=0, y=0;
+    const bool pinExist = iterm->getAvgXY(&x, &y);
+    if(pinExist)
+    {
+      xur = std::max(xur, x);
+      yur = std::max(yur, y);
+      xll = std::min(xll, x);
+      yll = std::min(yll, y);
+    }
+  }
+  const int width = std::abs(xur-xll);
+  const int height = std::abs(yur-yll);
+  int hpwl = width + height;
   return hpwl;
 }
 
 int
-SimulatedAnnealingPlacer::total_wirelength()
+SimulatedAnnealingPlacer::getNetHPWLFast(odb::dbNet * net) const
+{
+  int xll = std::numeric_limits<int>::max();
+  int yll = std::numeric_limits<int>::max();
+  int xur = std::numeric_limits<int>::min();
+  int yur = std::numeric_limits<int>::min();
+  for(auto iterm : net->getITerms())
+  {
+    int x=0, y=0;
+    //Using Cell LL location (fast)
+    odb::dbInst* inst = iterm->getInst();
+    if(inst)// is connected
+    {
+      inst->getLocation(x, y);
+      xur = std::max(xur, x);
+      yur = std::max(yur, y);
+      xll = std::min(xll, x);
+      yll = std::min(yll, y);
+    }
+  }
+  const int width = std::abs(xur-xll);
+  const int height = std::abs(yur-yll);
+  int hpwl = width + height;
+  return hpwl;
+}
+
+int
+SimulatedAnnealingPlacer::totalWirelength()
 {
   auto block = db_->getChip()->getBlock();
-  int tota_wire_lenght = 0;
+  int totalWireLength = 0;
   for(auto net : block->getNets())
   {
-    int hpwl = getNetHPWL(net);
-    tota_wire_lenght += hpwl;
+    //int hpwl = getNetHPWL(net);
+    int hpwl = getNetHPWLFast(net);
+    totalWireLength += hpwl;
   }
-  return tota_wire_lenght;
+  return totalWireLength;
 }
 
 void
-SimulatedAnnealingPlacer::swap_cells(odb::dbInst* cell_1, odb::dbInst* cell_2)
+SimulatedAnnealingPlacer::swapCells(odb::dbInst* cell1, odb::dbInst* cell2)
 {
-  int cell_1_x, cell_1__y;
-  int cell_2_x, cell_2__y;
-  cell_1->getLocation(cell_1_x, cell_1__y);
-  cell_2->getLocation(cell_2_x, cell_2__y);
+  int cell1X, cell1Y;
+  int cell2X, cell2Y;
+  cell1->getLocation(cell1X, cell1Y);
+  cell2->getLocation(cell2X, cell2Y);
 
-  cell_1->setLocation(cell_2_x, cell_2__y);
-  cell_2->setLocation(cell_1_x, cell_1__y);
+  cell1->setLocation(cell2X, cell2Y);
+  cell2->setLocation(cell1X, cell1Y);
 }
+
 void
 SimulatedAnnealingPlacer::placeCells()
 {
-
   generateInitialRandomPlacement();
 
   auto block = db_->getChip()->getBlock();
-  auto cells = block->getInsts();
+  auto instances = block->getInsts();
 
   int M = 1;
-  int NumCellInsts = cells.size();
+  int numCellInsts = instances.size();
   
-  std::vector<odb::dbInst*>  cells_list;
-  cells_list.reserve(NumCellInsts);
+  std::vector<odb::dbInst*>  cells;
+  cells.reserve(numCellInsts);
 
-  for(auto cell : block->getInsts()){
-    cells_list.push_back(cell);
-  }
+  for(auto cell : instances)
+    cells.push_back(cell); //TODO should check if a cell is a macro
 
-  double temperature = total_wirelength();
+  int currentTotalHPWL = totalWirelength();
+  double temperature = currentTotalHPWL;
   bool frozen = false;
+  int stoppingCriteria = 0.01;
+  int itrCount = 0;
   while(!frozen)
   {
-    int hpwl_emprovement = 0;
-    for(int s=0; s<M*NumCellInsts;s++)// where M could be a big number for example 1000
+    int beforeTotalHPWL = currentTotalHPWL;
+    for(int s=0; s<M*numCellInsts;s++)// where M could be a big number for example 1000
     {
-      int hpwl_before_OPTM = 0, hpwl_after_OPT = 0;
-      int cell_1_number, cell_2_number;
-
-
-      cell_1_number = std::rand() % (NumCellInsts - 1);
-      cell_2_number = std::rand() % (NumCellInsts - 1);
+      int hpwlBefore = 0, hpwlAfter = 0;
+      int cell1Index = std::rand() % (numCellInsts - 1);
+      int cell2Index = std::rand() % (numCellInsts - 1);
       
-      odb::dbInst* cell_1 = cells_list[cell_1_number];
-      odb::dbInst* cell_2 = cells_list[cell_2_number];
+      odb::dbInst* cell1 = cells[cell1Index];
+      odb::dbInst* cell2 = cells[cell2Index];
 
-      for (auto pin : cell_1->getITerms()) {
+      for(auto pin : cell1->getITerms())
+      {
         auto net = pin->getNet();
-        if (net != NULL) {
-          hpwl_before_OPTM += getNetHPWL(net);
-        }
+        if(net != NULL)
+          hpwlBefore += getNetHPWLFast(net);
       }
-      for (auto pin : cell_2->getITerms()) {
+
+      for(auto pin : cell2->getITerms())
+      {
         auto net = pin->getNet();
-        if (net != NULL) {
-          hpwl_before_OPTM += getNetHPWL(net);
-        }
+        if(net != NULL)
+          hpwlBefore += getNetHPWLFast(net);
       }
      
-      swap_cells(cell_1, cell_2);
+      swapCells(cell1, cell2);
 
-      for (auto pin : cell_1->getITerms()) {
-        auto net = pin->getNet();
-        if (net != NULL) {
-          hpwl_after_OPT += getNetHPWL(net);
-        }
-      }
-
-      for (auto pin : cell_2->getITerms()) {
-        auto net = pin->getNet();
-        if (net != NULL) {
-          hpwl_after_OPT += getNetHPWL(net);
-        }
-      }
-
-      double deltaWL = hpwl_after_OPT - hpwl_before_OPTM;
-      if (deltaWL < 0)// Good swap
+      for(auto pin : cell1->getITerms())
       {
-        hpwl_emprovement += deltaWL;
-        continue;
+        auto net = pin->getNet();
+        if(net != NULL)
+          hpwlAfter += getNetHPWLFast(net);
       }
+
+      for(auto pin : cell2->getITerms())
+      {
+        auto net = pin->getNet();
+        if(net != NULL)
+          hpwlAfter += getNetHPWLFast(net);
+      }
+
+      double deltaHPWL = hpwlAfter - hpwlBefore;
+      if (deltaHPWL < 0)// Good swap
+        currentTotalHPWL += deltaHPWL;
       else
       {
-        int random_uniform = std::rand() ;
-        if (random_uniform < exp(-deltaWL/temperature))
-        {
-          hpwl_emprovement += deltaWL;
-          continue;
-        }
+        int randomUniform = std::rand();
+        if (randomUniform < exp(-deltaHPWL/temperature))
+          currentTotalHPWL += deltaHPWL;
         else
-        {
-          swap_cells(cell_1, cell_2);
-        }
+          swapCells(cell1, cell2);
+      }
+
+      //after every 1k swaps prints the current progress
+      if(s%1000==0)
+      {
+        std::cout<<"Temp: "<<temperature<<" currentIt: "<<s
+                 <<" maxIt: "<<M*numCellInsts
+                 <<" HPWL: "<<currentTotalHPWL<<std::endl;
       }
     }
 
-    std::cout<<"emprovement : " << hpwl_emprovement << "\n";
-    if (hpwl_emprovement < -1000)
+    std::cout<<"Iteration count: "<<itrCount<<" deltaHPWL: "<<(double)currentTotalHPWL/beforeTotalHPWL<<std::endl;
+
+    if ((double)currentTotalHPWL/beforeTotalHPWL > stoppingCriteria)
     {
       temperature *= 0.9; // cool down the temperature
     }
@@ -182,7 +211,6 @@ SimulatedAnnealingPlacer::placeCells()
       frozen = true; // reached a minimum local, let's stop
     }
   }
-  std::cout<<"concluido \n";
 }
 
 }

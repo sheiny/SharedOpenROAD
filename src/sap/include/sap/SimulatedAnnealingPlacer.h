@@ -10,6 +10,11 @@ namespace utl {
   class Logger;
 }
 
+namespace stt {
+  class SteinerTreeBuilder;
+  class Tree;
+}
+
 namespace sap {
 class SimulatedAnnealingPlacer {
 public:
@@ -29,7 +34,10 @@ private:
 
   void swapCells(odb::dbInst* cell1, odb::dbInst* cell2);
 
+  stt::Tree buildSteinerTree(odb::dbNet * net);
+
   odb::dbDatabase* db_;
   utl::Logger* logger_;
+  stt::SteinerTreeBuilder *stt_;
 };
 }

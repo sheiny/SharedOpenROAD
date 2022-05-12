@@ -1,15 +1,60 @@
 #include "sap/SimulatedAnnealingPlacer.h"
 #include "odb/db.h"
 #include "ord/OpenRoad.hh"
+#include "stt/SteinerTreeBuilder.h"
 #include "utl/Logger.h"
 
 #include <iostream>
+
+struct Segment
+{
+  Segment(int xs, int xe, int ys, int ye):
+    x1(xs),
+    x2(xe),
+    y1(ys),
+    y2(ye)
+  {};
+  int x1, x2, y1, y2;
+};
+
+//This function returns the horizontal/vertical segments
+//from a given stt::Tree
+std::vector<Segment>
+extractSegments(const stt::Tree &tree, bool horizontal)
+{
+  std::vector<Segment> result;
+  for(int i = 0; i < tree.branchCount(); ++i)
+  {
+    const stt::Branch& branch = tree.branch[i];
+    if(i == branch.n)
+      continue;
+    const int x1 = branch.x;
+    const int y1 = branch.y;
+    const stt::Branch& neighbor = tree.branch[branch.n];
+    const int x2 = neighbor.x;
+    const int y2 = neighbor.y;
+
+    if(horizontal)
+    {
+      result.push_back({x1, x2, y1, y1});
+      result.push_back({x1, x2, y2, y2});
+    }
+    else
+    {
+      result.push_back({x1, x1, y1, y2});
+      result.push_back({x2, x2, y1, y2});
+    }
+  }
+  return result;
+}
+
 
 namespace sap {
 
 SimulatedAnnealingPlacer::SimulatedAnnealingPlacer() :
   db_{ord::OpenRoad::openRoad()->getDb()},
-  logger_{ord::OpenRoad::openRoad()->getLogger()}
+  logger_{ord::OpenRoad::openRoad()->getLogger()},
+  stt_{ord::OpenRoad::openRoad()->getSteinerTreeBuilder()}
 {
 }
 
@@ -213,5 +258,37 @@ SimulatedAnnealingPlacer::placeCells()
   }
 }
 
-}
+stt::Tree
+SimulatedAnnealingPlacer::buildSteinerTree(odb::dbNet * net)
+{
+  //skip PG Nets (double check for clock?)
+  if ((net->getSigType() == odb::dbSigType::GROUND)
+      || (net->getSigType() == odb::dbSigType::POWER))
+    return stt::Tree{};
 
+  const int driverID = net->getDrivingITerm();
+  if(driverID == 0 || driverID == -1)
+    return stt::Tree{}; //throw std::logic_error("Error, net without a driver (should we skip it?).");
+
+  // Get pin coords and driver
+  std::vector<int> xcoords, ycoords;
+  int rootIndex;
+  for(auto dbITerm : net->getITerms())
+  {
+    int x, y;
+    const bool pinExist = dbITerm->getAvgXY(&x, &y);
+    if(pinExist)
+    {
+      if(driverID == dbITerm->getId())
+      {
+        rootIndex = xcoords.size();
+      }
+      xcoords.push_back(x);
+      ycoords.push_back(y);
+    }
+  }
+  // Build Steiner Tree
+  const stt::Tree tree = stt_->makeSteinerTree(xcoords, ycoords, rootIndex);
+  return tree;
+}
+}

@@ -19,10 +19,12 @@ struct Segment
 
 //This function returns the horizontal/vertical segments
 //from a given stt::Tree
-std::vector<Segment>
-extractSegments(const stt::Tree &tree, bool horizontal)
+int
+getTreeWl(const stt::Tree &tree)
 {
-  std::vector<Segment> result;
+  //std::vector<Segment> result;
+  int treeWl = 0;
+  
   for(int i = 0; i < tree.branchCount(); ++i)
   {
     const stt::Branch& branch = tree.branch[i];
@@ -33,8 +35,8 @@ extractSegments(const stt::Tree &tree, bool horizontal)
     const stt::Branch& neighbor = tree.branch[branch.n];
     const int x2 = neighbor.x;
     const int y2 = neighbor.y;
-
-    if(horizontal)
+    treeWl += abs(x1 - x2) + abs(y1 - y2);
+    /*if(horizontal)
     {
       result.push_back({x1, x2, y1, y1});
       result.push_back({x1, x2, y2, y2});
@@ -43,9 +45,10 @@ extractSegments(const stt::Tree &tree, bool horizontal)
     {
       result.push_back({x1, x1, y1, y2});
       result.push_back({x2, x2, y1, y2});
-    }
+    }*/
+
   }
-  return result;
+  return treeWl;
 }
 
 
@@ -261,12 +264,14 @@ SimulatedAnnealingPlacer::placeCells()
 stt::Tree
 SimulatedAnnealingPlacer::buildSteinerTree(odb::dbNet * net)
 {
+  //std::cout<<"Branch Count :\n";
   //skip PG Nets (double check for clock?)
   if ((net->getSigType() == odb::dbSigType::GROUND)
       || (net->getSigType() == odb::dbSigType::POWER))
     return stt::Tree{};
 
   const int driverID = net->getDrivingITerm();
+  //std::cout<<"driver id: "<<driverID<<"\n";
   if(driverID == 0 || driverID == -1)
     return stt::Tree{}; //throw std::logic_error("Error, net without a driver (should we skip it?).");
 
@@ -290,5 +295,21 @@ SimulatedAnnealingPlacer::buildSteinerTree(odb::dbNet * net)
   // Build Steiner Tree
   const stt::Tree tree = stt_->makeSteinerTree(xcoords, ycoords, rootIndex);
   return tree;
+}
+
+void
+SimulatedAnnealingPlacer::getSteinerTrees()
+{
+  std::cout<<"entrou 1: \n";
+  auto block = db_->getChip()->getBlock();
+  block->setDrivingItermsforNets();
+  for(auto net : block->getNets())
+  {
+    stt::Tree tree = buildSteinerTree(net);
+    //tree.printTree(logger_);
+    std::cout<<"length tree: "<<getTreeWl(tree)<<" \n";
+    std::cout<<"length HPWL: "<<getNetHPWLFast(net)<<" \n\n";
+  }
+  std::cout<<"entrou 3: \n";
 }
 }

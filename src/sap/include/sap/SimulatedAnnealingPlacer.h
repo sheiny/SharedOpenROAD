@@ -23,6 +23,8 @@ public:
 
   void placeCells();
 
+  void getSteinerTrees();
+
 private:
   void generateInitialRandomPlacement();
 

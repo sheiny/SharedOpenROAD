@@ -23,6 +23,13 @@ placeCells()
   sa_placer->placeCells();
 }
 
+void
+buildSteinerTrees()
+{
+  SimulatedAnnealingPlacer* sa_placer = getSimulatedAnnealingPlacer();
+  sa_placer->getSteinerTrees();
+}
+
 } // namespace
 
 %} // inline

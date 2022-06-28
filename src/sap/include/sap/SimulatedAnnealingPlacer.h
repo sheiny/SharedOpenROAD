@@ -15,6 +15,11 @@ namespace stt {
   class Tree;
 }
 
+namespace grt {
+  class GlobalRouter;
+  struct GSegment;
+}
+
 namespace sap {
 class SimulatedAnnealingPlacer {
 public:
@@ -24,6 +29,8 @@ public:
   void placeCells();
 
   void getSteinerTrees();
+
+  void ShowFirstNetRout();
 
 private:
   void generateInitialRandomPlacement();
@@ -41,5 +48,6 @@ private:
   odb::dbDatabase* db_;
   utl::Logger* logger_;
   stt::SteinerTreeBuilder *stt_;
+  grt::GlobalRouter *grt_;
 };
 }

@@ -1,6 +1,7 @@
 #include "sap/SimulatedAnnealingPlacer.h"
 #include "odb/db.h"
 #include "ord/OpenRoad.hh"
+#include "grt/GlobalRouter.h"
 #include "stt/SteinerTreeBuilder.h"
 #include "utl/Logger.h"
 
@@ -57,7 +58,8 @@ namespace sap {
 SimulatedAnnealingPlacer::SimulatedAnnealingPlacer() :
   db_{ord::OpenRoad::openRoad()->getDb()},
   logger_{ord::OpenRoad::openRoad()->getLogger()},
-  stt_{ord::OpenRoad::openRoad()->getSteinerTreeBuilder()}
+  stt_{ord::OpenRoad::openRoad()->getSteinerTreeBuilder()},
+  grt_{ord::OpenRoad::openRoad()->getGlobalRouter()}
 {
 }
 
@@ -300,16 +302,30 @@ SimulatedAnnealingPlacer::buildSteinerTree(odb::dbNet * net)
 void
 SimulatedAnnealingPlacer::getSteinerTrees()
 {
-  std::cout<<"entrou 1: \n";
   auto block = db_->getChip()->getBlock();
   block->setDrivingItermsforNets();
   for(auto net : block->getNets())
   {
     stt::Tree tree = buildSteinerTree(net);
-    //tree.printTree(logger_);
-    std::cout<<"length tree: "<<getTreeWl(tree)<<" \n";
-    std::cout<<"length HPWL: "<<getNetHPWLFast(net)<<" \n\n";
+    tree.printTree(logger_);
+    //std::cout<<"length tree: "<<getTreeWl(tree)<<" \n";
+    //std::cout<<"length HPWL: "<<getNetHPWLFast(net)<<" \n\n";
   }
-  std::cout<<"entrou 3: \n";
+}
+
+void
+SimulatedAnnealingPlacer::ShowFirstNetRout() {
+  auto block = db_->getChip()->getBlock();
+  auto nets = block->getNets();
+
+  std::vector<odb::dbNet*>  net_list;
+  net_list.reserve(nets.size());
+
+  for(auto cell : net_list)
+    net_list.push_back(cell); //TODO should check if a cell is a macro
+
+  grt_->globalRoute();
+  grt::NetRouteMap routs = grt_->getRoutes();
+  grt_->print(routs[net_list[1]]);
 }
 }

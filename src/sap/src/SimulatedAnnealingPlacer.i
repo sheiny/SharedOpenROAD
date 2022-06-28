@@ -30,6 +30,13 @@ buildSteinerTrees()
   sa_placer->getSteinerTrees();
 }
 
+void
+ShowFirstNetRout()
+{
+  SimulatedAnnealingPlacer* sa_placer = getSimulatedAnnealingPlacer();
+  sa_placer->ShowFirstNetRout();
+}
+
 } // namespace
 
 %} // inline

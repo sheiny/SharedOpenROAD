@@ -24,6 +24,7 @@ target_link_libraries(sap
     odb
     OpenSTA
     stt
+    grt
 )
 
 messages(

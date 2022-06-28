@@ -242,11 +242,9 @@ SimulatedAnnealingPlacer::placeCells()
       }
 
       //after every 1k swaps prints the current progress
-      if(s%1000==0)
+      if(s %1000==0)
       {
-        std::cout<<"Temp: "<<temperature<<" currentIt: "<<s
-                 <<" maxIt: "<<M*numCellInsts
-                 <<" HPWL: "<<currentTotalHPWL<<std::endl;
+        continue;
       }
     }
 
@@ -317,15 +315,28 @@ void
 SimulatedAnnealingPlacer::ShowFirstNetRout() {
   auto block = db_->getChip()->getBlock();
   auto nets = block->getNets();
-
+  //creates a list of all nets
   std::vector<odb::dbNet*>  net_list;
   net_list.reserve(nets.size());
-
-  for(auto cell : net_list)
+  for(auto cell : nets)
     net_list.push_back(cell); //TODO should check if a cell is a macro
 
+  //makes the global routing
   grt_->globalRoute();
+
+  //gets the segment for the first net
   grt::NetRouteMap routs = grt_->getRoutes();
-  grt_->print(routs[net_list[1]]);
+  odb::dbNet* net1 = net_list[100];
+  grt::GRoute route = routs[net1];
+
+  for (auto segment : route){
+    logger_->report("{:6d} {:6d} {:2d} -> {:6d} {:6d} {:2d}",
+                    segment.init_x,
+                    segment.init_y,
+                    segment.init_layer,
+                    segment.final_x,
+                    segment.final_y,
+                    segment.final_layer);
+  }
 }
 }

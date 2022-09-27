@@ -218,6 +218,13 @@ getSteinerTreeBuilder()
   return openroad->getSteinerTreeBuilder();
 }
 
+rcm::CellMoveRouter*
+getCellMoveRouter()
+{
+  OpenRoad *openroad = getOpenRoad();
+  return openroad->getCellMoveRouter();
+}
+
 } // namespace ord
 
 namespace sta {

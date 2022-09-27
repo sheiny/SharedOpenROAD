@@ -79,6 +79,7 @@
 #include "triton_route/MakeTritonRoute.h"
 #include "utl/Logger.h"
 #include "utl/MakeLogger.h"
+#include "rcm/MakeCellMoveRouter.h"
 
 namespace sta {
 extern const char* openroad_swig_tcl_inits[];
@@ -139,6 +140,7 @@ OpenRoad::OpenRoad()
       pdngen_(nullptr),
       distributer_(nullptr),
       stt_builder_(nullptr),
+      cellMoveRouter_(nullptr),
       threads_(1)
 {
   db_ = dbDatabase::create();
@@ -168,6 +170,7 @@ OpenRoad::~OpenRoad()
   deletePdnGen(pdngen_);
   deleteDistributed(distributer_);
   deleteSteinerTreeBuilder(stt_builder_);
+  //deleteCellMoveRouter(cellMoveRouter_);
   delete logger_;
 }
 
@@ -220,6 +223,7 @@ void OpenRoad::init(Tcl_Interp* tcl_interp)
   pdngen_ = makePdnGen();
   distributer_ = makeDistributed();
   stt_builder_ = makeSteinerTreeBuilder();
+  cellMoveRouter_ = makeCellMoveRouter();
 
   // Init components.
   Openroad_swig_Init(tcl_interp);
@@ -252,6 +256,7 @@ void OpenRoad::init(Tcl_Interp* tcl_interp)
   initPdnGen(this);
   initDistributed(this);
   initSteinerTreeBuilder(this);
+  initCellMoveRouter(this);
 
   // Import exported commands to global namespace.
   Tcl_Eval(tcl_interp, "sta::define_sta_cmds");

@@ -31,3 +31,8 @@ cmake-build-debug/
 
 coverage-output
 messages.txt
+
+CMakeCache.txt
+*CMakeFiles/
+tags
+Session.vim

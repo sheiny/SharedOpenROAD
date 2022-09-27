@@ -140,6 +140,10 @@ namespace stt {
 class SteinerTreeBuilder;
 }
 
+namespace rcm {
+class CellMoveRouter;
+}
+
 namespace ord {
 
 using std::string;
@@ -183,6 +187,7 @@ public:
   pdn::PdnGen *getPdnGen() { return pdngen_; }
   dst::Distributed *getDistributed() { return distributer_; }
   stt::SteinerTreeBuilder *getSteinerTreeBuilder() { return stt_builder_; }
+  rcm::CellMoveRouter *getCellMoveRouter() { return cellMoveRouter_; }
 
   // Return the bounding box of the db rows.
   odb::Rect getCore();
@@ -282,6 +287,7 @@ private:
   pdn::PdnGen *pdngen_;
   dst::Distributed *distributer_;
   stt::SteinerTreeBuilder *stt_builder_;
+  rcm::CellMoveRouter *cellMoveRouter_;
 
   std::set<Observer *> observers_;
 

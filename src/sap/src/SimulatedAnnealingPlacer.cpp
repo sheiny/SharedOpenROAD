@@ -59,7 +59,8 @@ SimulatedAnnealingPlacer::SimulatedAnnealingPlacer() :
   db_{ord::OpenRoad::openRoad()->getDb()},
   logger_{ord::OpenRoad::openRoad()->getLogger()},
   stt_{ord::OpenRoad::openRoad()->getSteinerTreeBuilder()},
-  grt_{ord::OpenRoad::openRoad()->getGlobalRouter()}
+  grt_{ord::OpenRoad::openRoad()->getGlobalRouter()},
+  gui_{gui::Gui::get()}
 {
 }
 
@@ -329,7 +330,8 @@ SimulatedAnnealingPlacer::ShowFirstNetRout() {
   odb::dbNet* net1 = net_list[100];
   grt::GRoute route = routs[net1];
 
-  for (auto segment : route){
+  for (auto segment : route)
+  {
     logger_->report("{:6d} {:6d} {:2d} -> {:6d} {:6d} {:2d}",
                     segment.init_x,
                     segment.init_y,
@@ -339,4 +341,155 @@ SimulatedAnnealingPlacer::ShowFirstNetRout() {
                     segment.final_layer);
   }
 }
+void
+SimulatedAnnealingPlacer::Random_Cell_Rerout(){
+
+  auto block = db_->getChip()->getBlock();
+  auto cells = block->getInsts();
+
+  //creates a list of all nets
+  std::vector<odb::dbInst*>  cell_list;
+  cell_list.reserve(cells.size());
+  for(auto cell : cells)
+    cell_list.push_back(cell);
+
+  odb::dbInst* cell1 = cell_list[1000];
+  Swap_and_Rerout(cell1);
+
+}
+
+void
+SimulatedAnnealingPlacer::Swap_and_Rerout(odb::dbInst * moving_cell) {
+  // Inital Global Rout by OpenROAD
+  grt_->globalRoute();
+
+  // Initializing incremental router
+  auto block = db_->getChip()->getBlock();
+  grt::IncrementalGRoute IncrementalRouter = grt::IncrementalGRoute(grt_, block);
+
+
+  // Divding Cells by size and shape
+  auto cells = block->getInsts();
+  std::map<int, std::vector<odb::dbInst *>> cell_length;
+
+  for (auto cell : cells)
+  {
+    int length = cell->getBBox()->getLength();
+    auto vec = cell_length[length];
+    if (!vec.empty())
+    {
+      vec.push_back(cell);
+      cell_length[length] = vec;
+    }
+    else
+    {
+      std::vector<odb::dbInst *> new_vector;
+      new_vector.push_back(cell);
+      cell_length[length] = new_vector;
+    }
+  }
+
+  /*// chosing a random cell with same size and shape to swap
+  // Possible better soution using Median as an metric to chose a swapping cell insted of reandom chosing
+  auto same_length = cell_length[moving_cell->getBBox()->getLength()];
+  int random_swap_cell_index = std::rand() % (same_length.size() - 1);
+  auto swap_cell = same_length[random_swap_cell_index];
+  
+  if (swap_cell == moving_cell)
+  {
+    swap_cell = same_length[std::rand() % (same_length.size() - 1)];
+  }*/
+
+  /*//swapping cells
+  swapCells(swap_cell, moving_cell); */
+
+  std::vector<odb::dbNet*>  affected_nets;
+  std::vector<int>  nets_Bbox_Xs;
+  std::vector<int>  nets_Bbox_Ys;
+  for(auto pin : moving_cell->getITerms())
+  {
+    auto net = pin->getNet();
+    if(net != NULL){
+
+      int xll = std::numeric_limits<int>::max();
+      int yll = std::numeric_limits<int>::max();
+      int xur = std::numeric_limits<int>::min();
+      int yur = std::numeric_limits<int>::min();
+      for(auto iterm : net->getITerms())
+      {
+        int x=0, y=0;
+        //Using Cell LL location (fast)
+        odb::dbInst* inst = iterm->getInst();
+        if(inst && (inst != moving_cell))// is connected
+        {
+          inst->getLocation(x, y);
+          xur = std::max(xur, x);
+          yur = std::max(yur, y);
+          xll = std::min(xll, x);
+          yll = std::min(yll, y);
+        }
+        else {
+          std::cout<<"oi\n";
+        }
+      }
+      nets_Bbox_Xs.push_back(xur);
+      nets_Bbox_Xs.push_back(xll);
+      nets_Bbox_Ys.push_back(yur);
+      nets_Bbox_Ys.push_back(yll);
+
+      grt_->addDirtyNet(net);
+      affected_nets.push_back(net);
+    }
+  }
+
+  odb::Rect Optimal_Region = nets_Bboxes_median(nets_Bbox_Xs, nets_Bbox_Ys);
+
+  gui::Painter painter = gui::Painter();
+
+  painter.drawGeomShape(&Optimal_Region);
+
+  /*//adding affected nets to re-rout
+  for(auto pin : swap_cell->getITerms())
+  {
+    auto net = pin->getNet();
+    if(net != NULL){
+      grt_->addDirtyNet(net);
+      affected_nets.push_back(net);
+    }
+  }
+
+  // wirelength before re-routing
+  for (auto net : affected_nets) {
+    grt_->reportNetWireLength(net, true, false, false, "before_wl");
+  }
+
+  // re-routing
+  IncrementalRouter.updateRoutes();
+
+  // wirelength after re-routing
+  for (auto net : affected_nets) {
+    grt_->reportNetWireLength(net, true, false, false, "after_wl");
+  }*/
+
+}
+
+odb::Rect
+SimulatedAnnealingPlacer::nets_Bboxes_median(std::vector<int> Xs, std::vector<int> Ys) {
+
+  int median_pos_X = std::floor(Xs.size()/2);
+  std::nth_element(Xs.begin(), Xs.begin() + median_pos_X, Xs.end());
+  int median_pos_Y = std::floor(Ys.size()/2);
+  std::nth_element(Ys.begin(), Ys.begin() + median_pos_Y, Ys.end());
+
+  int xll = Xs[median_pos_X];
+  int xur = Xs[median_pos_X + 1];
+  int yll = Ys[median_pos_Y];
+  int yur = Ys[median_pos_Y + 1];
+
+  std::cout<<"xll : " << xll << "; xur : " << xur << " \n yll : " << yll << "; yur : "<< yur<<"\n tamanho dos Xs: "<<Xs.size()<<"\n";
+
+  return odb::Rect(xll, yll,xur, yur);
+}
+
+
 }

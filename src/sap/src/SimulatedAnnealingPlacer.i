@@ -31,10 +31,10 @@ buildSteinerTrees()
 }
 
 void
-ShowFirstNetRout()
+Random_Cell_Rerout()
 {
   SimulatedAnnealingPlacer* sa_placer = getSimulatedAnnealingPlacer();
-  sa_placer->ShowFirstNetRout();
+  sa_placer->Random_Cell_Rerout();
 }
 
 } // namespace

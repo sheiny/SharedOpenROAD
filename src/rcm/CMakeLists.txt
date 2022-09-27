@@ -22,6 +22,7 @@ target_include_directories(rcm
 target_link_libraries(rcm
   utl
   odb
+  gui
   OpenSTA
 )
 

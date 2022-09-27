@@ -23,6 +23,13 @@ helloWorld()
   cellMoveRouter->helloWorld();
 }
 
+void
+drawRect(int x1, int y1, int x2, int y2)
+{
+  CellMoveRouter* cellMoveRouter = getCellMoveRouter();
+  cellMoveRouter->drawRectangle(x1, y1, x2, y2);
+}
+
 
 } // namespace
 

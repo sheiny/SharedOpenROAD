@@ -24,6 +24,7 @@ target_link_libraries(rcm
   odb
   gui
   OpenSTA
+  grt
 )
 
 messages(

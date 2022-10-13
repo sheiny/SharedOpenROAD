@@ -30,6 +30,13 @@ drawRect(int x1, int y1, int x2, int y2)
   cellMoveRouter->drawRectangle(x1, y1, x2, y2);
 }
 
+void
+RandomRerout()
+{
+  CellMoveRouter* cellMoveRouter = getCellMoveRouter();
+  cellMoveRouter->Random_Cell_Rerout();
+}
+
 
 } // namespace
 

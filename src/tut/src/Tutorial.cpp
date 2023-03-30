@@ -16,16 +16,54 @@ Tutorial::Tutorial() :
 void
 Tutorial::printHello()
 {
-  logger_->report("Hello World.");
+  logger_->report("olha o terminal");
+  std::cout<<"Listing HPWL:"<<std::endl;
+  auto block = db_->getChip()->getBlock(); //pegar o bloco
+  for(auto net : block->getNets()) //percorrer net por net do bloco
+  {
+    auto xmax = std::numeric_limits<int>::min();
+    auto xmin = std::numeric_limits<int>::max();
+    auto ymax = std::numeric_limits<int>::min();
+    auto ymin = std::numeric_limits<int>::max();
+    auto HPWL = 0;
+    
+    std::cout<<net->getName()<<std::endl; //nome da net
+    for(auto iterm : net->getITerms()) //iterm(instance terminal) eh o pino da instancia da standard cell que ta ligada na net
+    {
+      auto cell = iterm->getInst(); // instancia da standard cell onde a net esta ligada
+      auto cellName = cell->getName(); //pega o nome desta celula
+      auto std_pin = iterm->getMTerm(); //master terminal da standard cell - o pino da standard cell global
+      auto pinName = std_pin->getName();//nome do pino
+      // std::cout<<"    PinName: "<< cellName << " : "<< pinName << std::endl;
+      int x=0, y=0;
+      iterm->getAvgXY(&x, &y);
+      //xmin = std::numeric_limits<int>::lowest();
+      if (x > xmax) xmax = x;
+      if (y > ymax) ymax = y;
+      if (x < xmin) xmin = x;
+      if (y < ymin) ymin = y;
+      //std::cout<<"xmax: "<<xmax<<" xmin: "<<xmin<<" ymax: "<<ymax<<" ymin: "<<ymin<<std::endl;
+
+      std::cout<<"    PinName: "<< cellName << " : "<< pinName << " Position: ( " << x << " , "<< y << " )"<< std::endl;
+    }
+  std::cout<<"xmax: "<<xmax<<" xmin: "<<xmin<<" ymax: "<<ymax<<" ymin: "<<ymin<<std::endl;
+
+  HPWL = (xmax - xmin) + (ymax - ymin);
+  std::cout<<"HPWL: "<<HPWL<<std::endl;
+
+  }
+
+
 }
 
 void
 Tutorial::printCells()
 {
-  std::cout<<"Printing all cell names:"<<std::endl;
+  
+  /*std::cout<<"Printing all cell names:"<<std::endl;
   auto block = db_->getChip()->getBlock();
   for(auto inst : block->getInsts())
-    std::cout<<inst->getName()<<std::endl;
+    std::cout<<inst->getName()<<std::endl;*/
 }
 
 void
@@ -44,16 +82,18 @@ Tutorial::printPins()
   auto block = db_->getChip()->getBlock();
   for(auto net : block->getNets())
   {
+    net->get
     std::cout<<"Net: "<<net->getName()<<std::endl;
-    for(auto iterm : net->getITerms())
+    for(auto iterm : net->getITerms()) //instance terminals são os pinos da instancia?
     {
+      iterm->
       auto cell = iterm->getInst();
       auto cellName = cell->getName();
-      auto std_pin = iterm->getMTerm();
+      auto std_pin = iterm->getMTerm(); //o que seria master terminal?
       auto pinName = std_pin->getName();
       // std::cout<<"    PinName: "<< cellName << " : "<< pinName << std::endl;
       int x=0, y=0;
-      iterm->getAvgXY(&x, &y);
+      iterm->getAvgXY(&x, &y); //isso é um vetor? 
       std::cout<<"    PinName: "<< cellName << " : "<< pinName << " Position: ( " << x << " , "<< y << " )"<< std::endl;
     }
 

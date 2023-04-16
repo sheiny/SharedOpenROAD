@@ -144,6 +144,8 @@ class GlobalRouter
   void init(ord::OpenRoad* openroad);
   void clear();
 
+  int computeNetWirelength(odb::dbNet* db_net); //////////////////////////////////////////////
+
   void setAdjustment(const float adjustment);
   void setMinRoutingLayer(const int min_layer);
   void setMaxRoutingLayer(const int max_layer);
@@ -252,7 +254,7 @@ class GlobalRouter
                                 float reduction_percentage);
   void applyObstructionAdjustment(const odb::Rect& obstruction,
                                   odb::dbTechLayer* tech_layer);
-  int computeNetWirelength(odb::dbNet* db_net);
+  //int computeNetWirelength(odb::dbNet* db_net); ///////////////////////////////////////////////////////////////////
   void computeWirelength();
   std::vector<Pin*> getAllPorts();
   int computeTrackConsumption(const Net* net,

@@ -23,6 +23,7 @@ target_link_libraries(tut
     utl
     odb
     OpenSTA
+    grt
 )
 
 messages(

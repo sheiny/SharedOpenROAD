@@ -2,6 +2,7 @@
 #include "odb/db.h"
 #include "ord/OpenRoad.hh"
 #include "tut/Tutorial.h"
+#include "grt/GlobalRouter.h"
 
 namespace ord {
 tut::Tutorial* getTutorial(); // Defined in OpenRoad.i
@@ -22,6 +23,12 @@ print()
   Tutorial* tutorial = getTutorial();
   tutorial->printHello();
 }
+
+//int calc_HPWL(odb::dbNet* net)
+//{
+//  Tutorial* tutorial = getTutorial();
+//  tutorial->calc_HPWL(odb::dbNet* net)
+//}
 
 void
 printCells()
@@ -49,6 +56,7 @@ printHPWLs()
 {
   Tutorial* tutorial = getTutorial();
   tutorial->printHPWLs();
+  //return hpwl;
 }
 
 } // namespace

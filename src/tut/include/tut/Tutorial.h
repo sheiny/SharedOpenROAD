@@ -2,10 +2,17 @@
 
 namespace odb {
   class dbDatabase;
+  class dbNet;
 }
 
 namespace utl {
   class Logger;
+}
+
+namespace grt {
+  class GlobalRouter;
+  class IncrementalGRoute;
+  struct GSegment;
 }
 
 namespace tut {
@@ -30,9 +37,13 @@ class Tutorial {
     //Traverse all nets printing the total HPWL
     void printHPWLs();
 
+    int calc_HPWL(odb::dbNet* net);
+
   private:
     odb::dbDatabase* db_;
     utl::Logger* logger_;
+    grt::GlobalRouter *grt_;
+    //odb::dbBlock* block_;
   };
 }
 

@@ -24,6 +24,7 @@ target_link_libraries(tut
     odb
     OpenSTA
     grt
+    stt
 )
 
 messages(

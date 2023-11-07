@@ -102,6 +102,54 @@ CellMoveRouter::ShowFirstNetRout() {
                     segment.final_layer);
   }
 }
+
+void
+CellMoveRouter::InitCellTree(){
+  cellrTree_ = std::make_unique<CRTree>();
+
+  auto block = db_->getChip()->getBlock();
+  auto cells = block->getInsts();
+
+  for (auto cell : cells) {
+    auto lx = cell->getBBox()->xMin();
+    auto rx = cell->getBBox()->xMax();
+    auto ly = cell->getBBox()->yMin();
+    auto uy = cell->getBBox()->yMax();
+
+    box_t cell_box({lx, ly}, {rx, uy});
+    CellElement el = std::pair(cell_box, cell);
+    cellrTree_->insert(el);
+  }
+}
+
+void
+CellMoveRouter::InitGCellTree() {
+  gcellTree_ = std::make_unique<GRTree>();
+
+  auto block = db_->getChip()->getBlock();
+  auto ggrid = block->getGCellGrid();
+
+  std::vector<int> gridX, gridY;
+  ggrid->getGridX(gridX);
+  ggrid->getGridY(gridY);
+
+  for (int i = 1; i < gridX.size(); i++) {
+    auto lx = gridX[i - 1];
+    auto rx = gridX[i];
+    for(int j = 1; j < gridY.size(); j++) {
+      auto ly = gridY[j - 1];
+      auto uy = gridY[j];
+
+      box_t gcell_box({lx, ly}, {rx, uy});
+
+      odb::Rect Bbox = odb::Rect(lx, ly, rx, uy);
+      GCellElement el = std::pair(gcell_box, Bbox);
+      gcellTree_->insert(el);
+      rectangleRender_->addRectangle(Bbox);
+    }
+  }
+}
+
 void
 CellMoveRouter::Random_Cell_Rerout(){
 
@@ -121,25 +169,32 @@ CellMoveRouter::Random_Cell_Rerout(){
 
 void
 CellMoveRouter::Swap_and_Rerout(odb::dbInst * moving_cell) {
-  // Inital Global Rout by OpenROAD
-  grt_->globalRoute();
-
+  auto block = db_->getChip()->getBlock();
+  std::map<int, std::vector<odb::dbInst *>> cell_length;
+  std::vector<odb::dbNet*>  affected_nets;
+  std::vector<int>  nets_Bbox_Xs;
+  std::vector<int>  nets_Bbox_Ys;
   gui::Gui* gui = gui::Gui::get();
   if (rectangleRender_ == nullptr)
   {
     rectangleRender_ = std::make_unique<RectangleRender>();
     gui->registerRenderer(rectangleRender_.get());
   }
+  
+  //Initalize Rtrees
+  InitCellTree();
+  InitGCellTree();
+  
+  // Inital Global Rout by OpenROAD
+  grt_->globalRoute();
 
   rectangleRender_->clear_rectangles();
+
   // Initializing incremental router
-  auto block = db_->getChip()->getBlock();
   grt::IncrementalGRoute IncrementalRouter = grt::IncrementalGRoute(grt_, block);
 
 
-  // Divding Cells by size and shape
-  auto cells = block->getInsts();
-  std::map<int, std::vector<odb::dbInst *>> cell_length;
+  /* Divding Cells by size and shape
 
   for (auto cell : cells)
   {
@@ -156,25 +211,9 @@ CellMoveRouter::Swap_and_Rerout(odb::dbInst * moving_cell) {
       new_vector.push_back(cell);
       cell_length[length] = new_vector;
     }
-  }
-
-  /*// chosing a random cell with same size and shape to swap
-  // Possible better soution using Median as an metric to chose a swapping cell insted of reandom chosing
-  auto same_length = cell_length[moving_cell->getBBox()->getLength()];
-  int random_swap_cell_index = std::rand() % (same_length.size() - 1);
-  auto swap_cell = same_length[random_swap_cell_index];
-  
-  if (swap_cell == moving_cell)
-  {
-    swap_cell = same_length[std::rand() % (same_length.size() - 1)];
   }*/
 
-  /*//swapping cells
-  swapCells(swap_cell, moving_cell); */
-
-  std::vector<odb::dbNet*>  affected_nets;
-  std::vector<int>  nets_Bbox_Xs;
-  std::vector<int>  nets_Bbox_Ys;
+  //Finding the cell's nets bounding boxes
   for(auto pin : moving_cell->getITerms())
   {
     auto net = pin->getNet();
@@ -203,15 +242,21 @@ CellMoveRouter::Swap_and_Rerout(odb::dbInst * moving_cell) {
       nets_Bbox_Ys.push_back(yur);
       nets_Bbox_Ys.push_back(yll);
 
-      rectangleRender_->addRectangle(odb::Rect(xll, yll,xur, yur));
-
       grt_->addDirtyNet(net);
       affected_nets.push_back(net);
     }
   }
 
-  odb::Rect Optimal_Region = nets_Bboxes_median(nets_Bbox_Xs, nets_Bbox_Ys);
-
+  point_t p;
+  point_t Optimal_Region = nets_Bboxes_median(nets_Bbox_Xs, nets_Bbox_Ys);
+  std::vector<GCellElement> result;
+  gcellTree_->query(bgi::intersects(Optimal_Region), std::back_inserter(result));
+  for(auto gcell : result) {
+    
+    std::cout<<"gcell Box: ("<<gcell.second.xMin()<<", "<<gcell.second.yMin()<<"), ";
+    std::cout<<"("<<gcell.second.xMax()<<", "<<gcell.second.yMax()<<")\n";
+    rectangleRender_->addRectangle(gcell.second);
+  }
   gui->redraw();
 
   /*//adding affected nets to re-rout
@@ -236,8 +281,7 @@ CellMoveRouter::Swap_and_Rerout(odb::dbInst * moving_cell) {
 
 }
 
-odb::Rect
-CellMoveRouter::nets_Bboxes_median(std::vector<int> Xs, std::vector<int> Ys) {
+point_t CellMoveRouter::nets_Bboxes_median(std::vector<int> Xs, std::vector<int> Ys) {
 
   int median_pos_X = std::floor(Xs.size()/2);
   std::sort(Xs.begin(), Xs.end());
@@ -250,16 +294,17 @@ CellMoveRouter::nets_Bboxes_median(std::vector<int> Xs, std::vector<int> Ys) {
   int yll = Ys[median_pos_Y - 1];
   int yur = Ys[median_pos_Y];
 
-  if (xll == xur) xur = Xs[median_pos_X + 1];
-  if (yll == yur) yur = Ys[median_pos_Y + 1];
+  int x = (xll + xur)/2;
+  int y = (yll + yur)/2; 
 
   std::cout<<"Optimal Region bounding box:\nxll : " << xll << "; xur : " << xur << " \nyll : " << yll << "; yur : "<< yur<<"\n ";
+  std::cout<<"Optimal Point: x: " << x << ", y: " << y << "\n";
 
-  //drawRectangle(xll, yll, xur, yur);
+  //drawRectangle(x, y, x+100, y+100);
 
-  rectangleRender_->addRectangle(odb::Rect(xll, yll,xur, yur));
+  rectangleRender_->addRectangle(odb::Rect(x, y, x+100, y+100));
 
-  return odb::Rect(xll, yll,xur, yur);
+  return point_t(x, y);
 }
 
 }

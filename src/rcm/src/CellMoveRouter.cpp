@@ -105,6 +105,7 @@ CellMoveRouter::ShowFirstNetRout() {
 
 void
 CellMoveRouter::InitCellTree(){
+  std::cout<<"Initializing Cell rtree..."<<std::endl;
   cellrTree_ = std::make_unique<CRTree>();
 
   auto block = db_->getChip()->getBlock();
@@ -124,6 +125,7 @@ CellMoveRouter::InitCellTree(){
 
 void
 CellMoveRouter::InitGCellTree() {
+  std::cout<<"Initializing GCell rtree..."<<std::endl;
   gcellTree_ = std::make_unique<GRTree>();
 
   auto block = db_->getChip()->getBlock();
@@ -133,20 +135,28 @@ CellMoveRouter::InitGCellTree() {
   ggrid->getGridX(gridX);
   ggrid->getGridY(gridY);
 
-  for (int i = 1; i < gridX.size(); i++) {
-    auto lx = gridX[i - 1];
-    auto rx = gridX[i];
-    for(int j = 1; j < gridY.size(); j++) {
-      auto ly = gridY[j - 1];
-      auto uy = gridY[j];
+  auto prev_y = *gridY.begin();
+  auto prev_x = *gridX.begin();
+  int soma = 0;
+  for(auto y_it = std::next(gridY.begin()); y_it != gridY.end(); y_it++)
+  {
+    int yll = prev_y;
+    int yur = *y_it;
+    for(auto x_it = std::next(gridX.begin()); x_it != gridX.end(); x_it++)
+    {
+      int xll = prev_x;
+      int xur = *x_it;
+      box_t gcell_box({xll, yll}, {xur, yur});
 
-      box_t gcell_box({lx, ly}, {rx, uy});
-
-      odb::Rect Bbox = odb::Rect(lx, ly, rx, uy);
+      odb::Rect Bbox = odb::Rect(xll, yll, xur, yur);
       GCellElement el = std::pair(gcell_box, Bbox);
       gcellTree_->insert(el);
+      soma++;
       rectangleRender_->addRectangle(Bbox);
+      prev_x = *x_it;
     }
+    prev_x = *gridX.begin();
+    prev_y = *y_it;
   }
 }
 
@@ -186,6 +196,7 @@ CellMoveRouter::Swap_and_Rerout(odb::dbInst * moving_cell) {
   InitGCellTree();
   
   // Inital Global Rout by OpenROAD
+  std::cout<<"Routing from OpenROAD....."<<std::endl;
   grt_->globalRoute();
 
   rectangleRender_->clear_rectangles();
@@ -193,27 +204,8 @@ CellMoveRouter::Swap_and_Rerout(odb::dbInst * moving_cell) {
   // Initializing incremental router
   grt::IncrementalGRoute IncrementalRouter = grt::IncrementalGRoute(grt_, block);
 
-
-  /* Divding Cells by size and shape
-
-  for (auto cell : cells)
-  {
-    int length = cell->getBBox()->getLength();
-    auto vec = cell_length[length];
-    if (!vec.empty())
-    {
-      vec.push_back(cell);
-      cell_length[length] = vec;
-    }
-    else
-    {
-      std::vector<odb::dbInst *> new_vector;
-      new_vector.push_back(cell);
-      cell_length[length] = new_vector;
-    }
-  }*/
-
   //Finding the cell's nets bounding boxes
+  std::cout<<"Computing cell nets bounding box"<<std::endl;
   for(auto pin : moving_cell->getITerms())
   {
     auto net = pin->getNet();
@@ -247,41 +239,44 @@ CellMoveRouter::Swap_and_Rerout(odb::dbInst * moving_cell) {
     }
   }
 
-  point_t p;
-  point_t Optimal_Region = nets_Bboxes_median(nets_Bbox_Xs, nets_Bbox_Ys);
+  //Get median cell Point
+  std::cout<<"Computing cell median point"<<std::endl;
+  std::pair<int, int> Optimal_Region = nets_Bboxes_median(nets_Bbox_Xs, nets_Bbox_Ys);
+  
+  //move cell to median point
+  int cx, cy, xur, yur, xll, yll;
+  moving_cell->setLocation(Optimal_Region.first, Optimal_Region.second);
+  moving_cell->getLocation(cx,cy);
+  std::cout<<"nome celula: "<<moving_cell->getName()<<"\n";
+  std::cout<<"Cell pos before Abacus: ("<<cx<<", "<<cy<<")"<<std::endl;
+  
+  //Find median Gcell
   std::vector<GCellElement> result;
-  gcellTree_->query(bgi::intersects(Optimal_Region), std::back_inserter(result));
-  for(auto gcell : result) {
-    
-    std::cout<<"gcell Box: ("<<gcell.second.xMin()<<", "<<gcell.second.yMin()<<"), ";
-    std::cout<<"("<<gcell.second.xMax()<<", "<<gcell.second.yMax()<<")\n";
-    rectangleRender_->addRectangle(gcell.second);
+  gcellTree_->query(bgi::intersects(point_t(Optimal_Region.first, Optimal_Region.second)), std::back_inserter(result));
+  std::cout<<"Optimal Gcell: ("<<result[0].second.xMin()<<", "<<result[0].second.yMin()<<"), ";
+  std::cout<<"("<<result[0].second.xMax()<<", "<<result[0].second.yMax()<<")\n";
+  std::cout<<std::endl;
+  
+  //Expanding legalization Area
+  std::vector<GCellElement> result2;
+  gcellTree_->query(bgi::intersects(box_t({result[0].second.xMin(), result[0].second.yMin()}, {result[0].second.xMax(), result[0].second.yMax()})), std::back_inserter(result2));
+  for(auto gcell : result2) {
+    xur = std::max(xur, gcell.second.xMax());
+    yur = std::max(yur, gcell.second.yMax());
+    xll = std::min(xll, gcell.second.xMin());
+    yll = std::min(yll, gcell.second.yMin());
   }
-  gui->redraw();
+  std::cout<<std::endl;
 
-  /*//adding affected nets to re-rout
-  for(auto pin : swap_cell->getITerms())
-  {
-    auto net = pin->getNet();
-    if(net != NULL){
-      grt_->addDirtyNet(net);
-      affected_nets.push_back(net);
-    }
-  }
-  // wirelength before re-routing
-  for (auto net : affected_nets) {
-    grt_->reportNetWireLength(net, true, false, false, "before_wl");
-  }
-  // re-routing
-  IncrementalRouter.updateRoutes();
-  // wirelength after re-routing
-  for (auto net : affected_nets) {
-    grt_->reportNetWireLength(net, true, false, false, "after_wl");
-  }*/
+  //Call abacus for legalization area
+  abacus_.abacus(xll, yll, xur, yur);
+  moving_cell->getLocation(cx,cy);
+  std::cout<<"Cell pos before Abacus: ("<<cx<<", "<<cy<<")"<<std::endl;
 
+  /*TODO chamar o incremental router para as nets afetadas*/
 }
 
-point_t CellMoveRouter::nets_Bboxes_median(std::vector<int> Xs, std::vector<int> Ys) {
+std::pair<int, int> CellMoveRouter::nets_Bboxes_median(std::vector<int> Xs, std::vector<int> Ys) {
 
   int median_pos_X = std::floor(Xs.size()/2);
   std::sort(Xs.begin(), Xs.end());
@@ -304,7 +299,7 @@ point_t CellMoveRouter::nets_Bboxes_median(std::vector<int> Xs, std::vector<int>
 
   rectangleRender_->addRectangle(odb::Rect(x, y, x+100, y+100));
 
-  return point_t(x, y);
+  return std::pair<int, int> (x, y);
 }
 
 }

@@ -5,6 +5,7 @@
 #include <boost/geometry.hpp>
 #include <boost/geometry/index/rtree.hpp>
 #include <boost/graph/grid_graph.hpp>
+#include "rcm/Abacus.h"
 
 namespace odb {
   class dbDatabase;
@@ -30,6 +31,7 @@ typedef bg::model::point<int64_t, 2, bg::cs::cartesian> point_t;
 
 namespace rcm {
 class RectangleRender;
+class Abacus;
 
 class CellMoveRouter {
   private:
@@ -56,10 +58,12 @@ class CellMoveRouter {
     void InitCellTree();
 
     void InitGCellTree();
+
+    void InitAbacus();
   
     void Swap_and_Rerout(odb::dbInst * moving_cell);
 
-    point_t nets_Bboxes_median(std::vector<int> Xs, std::vector<int> Ys);
+    std::pair<int, int> nets_Bboxes_median(std::vector<int> Xs, std::vector<int> Ys);
 
     odb::dbDatabase* db_;
     utl::Logger* logger_;
@@ -67,5 +71,6 @@ class CellMoveRouter {
     grt::GlobalRouter *grt_;
     std::unique_ptr<CRTree> cellrTree_;
     std::unique_ptr<GRTree> gcellTree_;
+    Abacus abacus_;
 };
 }

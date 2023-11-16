@@ -12,6 +12,7 @@ target_sources(rcm
   PRIVATE
     src/CellMoveRouter.cpp
     src/MakeCellMoveRouter.cpp
+    src/Abacus.cpp
 )
 
 target_include_directories(rcm

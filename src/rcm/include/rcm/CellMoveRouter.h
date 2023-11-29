@@ -51,7 +51,9 @@ class CellMoveRouter {
 
     void ShowFirstNetRout();
 
-    void Random_Cell_Rerout();
+    void Cell_Move_Rerout();
+
+    void InitCellsWeight();
 
   private:
 
@@ -61,14 +63,19 @@ class CellMoveRouter {
 
     void InitAbacus();
   
-    void Swap_and_Rerout(odb::dbInst * moving_cell);
+    bool Swap_and_Rerout(odb::dbInst * moving_cell);
+
+    int getNetHPWLFast(odb::dbNet * net) const;
 
     std::pair<int, int> nets_Bboxes_median(std::vector<int> Xs, std::vector<int> Ys);
 
+    std::vector<std::pair<int, odb::dbInst *>> cells_weight; //mapa de cells e deltas
+    std::vector<odb::dbInst *> cells_to_move;
     odb::dbDatabase* db_;
     utl::Logger* logger_;
     std::unique_ptr<RectangleRender> rectangleRender_;
     grt::GlobalRouter *grt_;
+    grt::IncrementalGRoute *icr_grt_;// = grt::IncrementalGRoute(grt_, block);
     std::unique_ptr<CRTree> cellrTree_;
     std::unique_ptr<GRTree> gcellTree_;
     Abacus abacus_;

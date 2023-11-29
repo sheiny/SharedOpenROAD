@@ -19,8 +19,8 @@ class Abacus {
 public:
     Abacus();
 
-    void abacus(int x1, int y1, int x2, int y2);
-    void abacus(
+    std::vector<odb::dbInst *> abacus(int x1, int y1, int x2, int y2);
+    std::vector<odb::dbInst *> abacus(
         std::vector<Row> const& rows,
         std::vector<std::vector<Split>> const& splits_per_row,
         std::vector<Cell>* cells
@@ -53,7 +53,7 @@ private:
         AbacusCluster* new_cluster, int* previous_i
     );
 
-    void set_pos(odb::dbInst* cell, int x, int y);
+    bool set_pos(odb::dbInst* cell, int x, int y);
 
     bool collide(int pos1_min, int pos1_max, int pos2_min, int pos2_max);
 

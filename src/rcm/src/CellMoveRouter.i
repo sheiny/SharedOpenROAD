@@ -31,10 +31,10 @@ drawRect(int x1, int y1, int x2, int y2)
 }
 
 void
-RandomRerout()
+move_rerout()
 {
   CellMoveRouter* cellMoveRouter = getCellMoveRouter();
-  cellMoveRouter->Random_Cell_Rerout();
+  cellMoveRouter->Cell_Move_Rerout();
 }
 
 

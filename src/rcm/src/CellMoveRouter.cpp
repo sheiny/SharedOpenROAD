@@ -105,7 +105,7 @@ CellMoveRouter::ShowFirstNetRout() {
 
 void
 CellMoveRouter::InitCellTree(){
-  std::cout<<"Initializing Cell rtree..."<<std::endl;
+  //std::cout<<"Initializing Cell rtree..."<<std::endl;
   cellrTree_ = std::make_unique<CRTree>();
 
   auto block = db_->getChip()->getBlock();
@@ -125,7 +125,7 @@ CellMoveRouter::InitCellTree(){
 
 void
 CellMoveRouter::InitGCellTree() {
-  std::cout<<"Initializing GCell rtree..."<<std::endl;
+  //std::cout<<"Initializing GCell rtree..."<<std::endl;
   gcellTree_ = std::make_unique<GRTree>();
 
   auto block = db_->getChip()->getBlock();
@@ -137,7 +137,7 @@ CellMoveRouter::InitGCellTree() {
 
   auto prev_y = *gridY.begin();
   auto prev_x = *gridX.begin();
-  int soma = 0;
+
   for(auto y_it = std::next(gridY.begin()); y_it != gridY.end(); y_it++)
   {
     int yll = prev_y;
@@ -151,8 +151,6 @@ CellMoveRouter::InitGCellTree() {
       odb::Rect Bbox = odb::Rect(xll, yll, xur, yur);
       GCellElement el = std::pair(gcell_box, Bbox);
       gcellTree_->insert(el);
-      soma++;
-      rectangleRender_->addRectangle(Bbox);
       prev_x = *x_it;
     }
     prev_x = *gridX.begin();
@@ -161,23 +159,55 @@ CellMoveRouter::InitGCellTree() {
 }
 
 void
-CellMoveRouter::Random_Cell_Rerout(){
+CellMoveRouter::Cell_Move_Rerout(){
 
   auto block = db_->getChip()->getBlock();
   auto cells = block->getInsts();
 
-  //creates a list of all nets
-  std::vector<odb::dbInst*>  cell_list;
-  cell_list.reserve(cells.size());
-  for(auto cell : cells)
-    cell_list.push_back(cell);
+  icr_grt_ = new grt::IncrementalGRoute(grt_, block);
 
-  odb::dbInst* cell1 = cell_list[std::rand() % (cells.size()-1)];
-  Swap_and_Rerout(cell1);
+
+  // Inital Global Rout by OpenROAD
+  grt_->globalRoute();
+
+  long init_wl = grt_->computeWirelength();
+  std::cout<<"initial wl  "<<init_wl<<std::endl;
+
+  InitCellsWeight();
+
+  int n_move_cells = std::floor(cells_weight.size() * 1/100);
+
+  //Initalize Rtrees
+  InitCellTree();
+  InitGCellTree();
+  
+  int n_cells = cells_weight.size();
+  std::cout<<"Celulas a serem movidas  "<<n_move_cells<<std::endl;
+  for(int i = cells_weight.size() - 1; i >=0; i--) {
+    if(i < n_cells - n_move_cells) {
+      break;
+    }
+    cells_to_move.push_back(cells_weight[i].second);
+  }
+
+  int cont = 0;
+  while(!cells_to_move.empty()) {
+    bool complete = Swap_and_Rerout(cells_to_move[0]);
+    if(complete) {
+      cont++;
+    }
+  }
+
+  std::cout<<"moved cells  "<<cont<<std::endl;
+  long after_wl = grt_->computeWirelength();
+  std::cout<<"final wl  "<<after_wl<<std::endl;
+
+  delete icr_grt_;
+  icr_grt_ = nullptr;
 
 }
 
-void
+bool
 CellMoveRouter::Swap_and_Rerout(odb::dbInst * moving_cell) {
   auto block = db_->getChip()->getBlock();
   std::map<int, std::vector<odb::dbInst *>> cell_length;
@@ -185,31 +215,18 @@ CellMoveRouter::Swap_and_Rerout(odb::dbInst * moving_cell) {
   std::vector<int>  nets_Bbox_Xs;
   std::vector<int>  nets_Bbox_Ys;
   gui::Gui* gui = gui::Gui::get();
-  if (rectangleRender_ == nullptr)
-  {
-    rectangleRender_ = std::make_unique<RectangleRender>();
-    gui->registerRenderer(rectangleRender_.get());
-  }
-  
-  //Initalize Rtrees
-  InitCellTree();
-  InitGCellTree();
-  
-  // Inital Global Rout by OpenROAD
-  std::cout<<"Routing from OpenROAD....."<<std::endl;
-  grt_->globalRoute();
-
-  rectangleRender_->clear_rectangles();
-
-  // Initializing incremental router
-  grt::IncrementalGRoute IncrementalRouter = grt::IncrementalGRoute(grt_, block);
 
   //Finding the cell's nets bounding boxes
-  std::cout<<"Computing cell nets bounding box"<<std::endl;
+  int before_hwpl = 0;
   for(auto pin : moving_cell->getITerms())
   {
     auto net = pin->getNet();
     if(net != NULL){
+      if (net->getSigType() == odb::dbSigType::POWER ||
+          net->getSigType() == odb::dbSigType::GROUND) {
+        continue;
+      }
+      before_hwpl += getNetHPWLFast(net);
 
       int xll = std::numeric_limits<int>::max();
       int yll = std::numeric_limits<int>::max();
@@ -240,22 +257,22 @@ CellMoveRouter::Swap_and_Rerout(odb::dbInst * moving_cell) {
   }
 
   //Get median cell Point
-  std::cout<<"Computing cell median point"<<std::endl;
+  //std::cout<<"Computing cell median point"<<std::endl;
   std::pair<int, int> Optimal_Region = nets_Bboxes_median(nets_Bbox_Xs, nets_Bbox_Ys);
   
   //move cell to median point
   int cx, cy, xur, yur, xll, yll;
   moving_cell->setLocation(Optimal_Region.first, Optimal_Region.second);
   moving_cell->getLocation(cx,cy);
-  std::cout<<"nome celula: "<<moving_cell->getName()<<"\n";
-  std::cout<<"Cell pos before Abacus: ("<<cx<<", "<<cy<<")"<<std::endl;
+  /*std::cout<<"nome celula: "<<moving_cell->getName()<<"\n";
+  std::cout<<"Cell pos before Abacus: ("<<cx<<", "<<cy<<")"<<std::endl;*/
   
   //Find median Gcell
   std::vector<GCellElement> result;
   gcellTree_->query(bgi::intersects(point_t(Optimal_Region.first, Optimal_Region.second)), std::back_inserter(result));
-  std::cout<<"Optimal Gcell: ("<<result[0].second.xMin()<<", "<<result[0].second.yMin()<<"), ";
+  /*std::cout<<"Optimal Gcell: ("<<result[0].second.xMin()<<", "<<result[0].second.yMin()<<"), ";
   std::cout<<"("<<result[0].second.xMax()<<", "<<result[0].second.yMax()<<")\n";
-  std::cout<<std::endl;
+  std::cout<<std::endl;*/
   
   //Expanding legalization Area
   std::vector<GCellElement> result2;
@@ -266,14 +283,75 @@ CellMoveRouter::Swap_and_Rerout(odb::dbInst * moving_cell) {
     xll = std::min(xll, gcell.second.xMin());
     yll = std::min(yll, gcell.second.yMin());
   }
-  std::cout<<std::endl;
+  bool regect = false;
+  int after_hwpl = 0;
+  for(auto pin : moving_cell->getITerms())
+  {
+    auto net = pin->getNet();
+    if(net != NULL){
+      if (net->getSigType() == odb::dbSigType::POWER ||
+          net->getSigType() == odb::dbSigType::GROUND) {
+        continue;
+      }
+      after_hwpl += getNetHPWLFast(net);
+    }
+  }
+
+  if(after_hwpl > before_hwpl) {
+    return false;
+  }
+
 
   //Call abacus for legalization area
-  abacus_.abacus(xll, yll, xur, yur);
+  /*TODO return information of moved cells during abacus legalizarion*/
+  auto changed_cells = abacus_.abacus(xll, yll, xur, yur);
   moving_cell->getLocation(cx,cy);
-  std::cout<<"Cell pos before Abacus: ("<<cx<<", "<<cy<<")"<<std::endl;
+  //std::cout<<"Cell pos before Abacus: ("<<cx<<", "<<cy<<")"<<std::endl;
+
+  for(auto cell : changed_cells) {
+    if(cell == moving_cell) {
+      continue;
+    }
+
+    for(auto pin : cell->getITerms())
+    {
+      auto affected_net = pin->getNet();
+      if(affected_net != NULL){
+        if (affected_net->getSigType() == odb::dbSigType::POWER ||
+            affected_net->getSigType() == odb::dbSigType::GROUND) {
+          continue;
+        }
+        grt_->addDirtyNet(affected_net);
+      }
+    }
+  }
+
+  for(auto pin : moving_cell->getITerms())
+  {
+    auto net = pin->getNet();
+    if(net != NULL){
+      if (net->getSigType() == odb::dbSigType::POWER ||
+          net->getSigType() == odb::dbSigType::GROUND) {
+        continue;
+      }
+      for (auto iterm : net->getITerms()) {
+        auto inst = iterm->getInst();
+        auto erase = std::find(cells_to_move.begin(), cells_to_move.end(), inst);
+        if(erase != cells_to_move.end()) {
+          cells_to_move.erase(erase);
+        }
+      }
+    }
+  }
 
   /*TODO chamar o incremental router para as nets afetadas*/
+  //std::cout<<"Reroteando nets afetadas....."<<std::endl;
+  icr_grt_->updateRoutes();
+  if(!grt_->getDirtyNets().empty()) {
+    grt_->clearDirtyNets();
+  }
+  //std::cout<<"nets afetadas reroteadas..."<<std::endl;
+  return true;
 }
 
 std::pair<int, int> CellMoveRouter::nets_Bboxes_median(std::vector<int> Xs, std::vector<int> Ys) {
@@ -292,14 +370,89 @@ std::pair<int, int> CellMoveRouter::nets_Bboxes_median(std::vector<int> Xs, std:
   int x = (xll + xur)/2;
   int y = (yll + yur)/2; 
 
-  std::cout<<"Optimal Region bounding box:\nxll : " << xll << "; xur : " << xur << " \nyll : " << yll << "; yur : "<< yur<<"\n ";
-  std::cout<<"Optimal Point: x: " << x << ", y: " << y << "\n";
+  //std::cout<<"Optimal Region bounding box:\nxll : " << xll << "; xur : " << xur << " \nyll : " << yll << "; yur : "<< yur<<"\n ";
+  //std::cout<<"Optimal Point: x: " << x << ", y: " << y << "\n";
 
   //drawRectangle(x, y, x+100, y+100);
 
   rectangleRender_->addRectangle(odb::Rect(x, y, x+100, y+100));
 
   return std::pair<int, int> (x, y);
+}
+
+void
+CellMoveRouter::InitCellsWeight()
+{
+
+  odb::dbBlock *block = db_->getChip()->getBlock(); //pega o bloco
+  auto cellNumber = block->getInsts().size();
+  
+  std::map <std::string, int> netDeltaLookup; //mapa de nets e hpwl,stwl
+
+  for (auto net: block->getNets()){ //cálculo do delta hpwl-wl de uma net
+    
+    auto netName = net->getName(); //pega o nome desta net
+
+    int hpwl=0, routing_wl=0;
+  
+    hpwl = getNetHPWLFast(net);
+
+    routing_wl = grt_->computeNetWirelength(net); //transformei esse metodo pra public - WL da net
+
+    int netDelta = routing_wl - hpwl; //calculo do delta da net/pino
+    netDeltaLookup[netName] = netDelta;
+  }
+
+  odb::dbInst* test;
+
+  for(auto cell : block->getInsts()) {
+    int delta_sum = 0;
+    if(cell->isFixed()) {
+      cells_weight.push_back(std::make_pair(delta_sum, cell));
+      continue;
+    }
+    for (auto pin : cell->getITerms()) {
+      auto net = pin->getNet();
+      if(net != nullptr) {
+        if (net->getSigType() == odb::dbSigType::POWER ||
+            net->getSigType() == odb::dbSigType::GROUND) {
+          continue;
+        }
+        delta_sum += netDeltaLookup[net->getName()];
+      }
+    }
+    cells_weight.push_back(std::make_pair(delta_sum, cell));
+    test = cell;
+  }
+  std::sort(cells_weight.begin(),cells_weight.end());
+  
+}
+
+int
+CellMoveRouter::getNetHPWLFast(odb::dbNet * net) const
+{
+  int xll = std::numeric_limits<int>::max();
+  int yll = std::numeric_limits<int>::max();
+  int xur = std::numeric_limits<int>::min();
+  int yur = std::numeric_limits<int>::min();
+  for(auto iterm : net->getITerms())
+  {
+    int x=0, y=0;
+    //Using Cell LL location (fast)
+    odb::dbInst* inst = iterm->getInst();
+    if(inst)// is connected
+    {
+      inst->getLocation(x, y);
+      xur = std::max(xur, x);
+      yur = std::max(yur, y);
+      xll = std::min(xll, x);
+      yll = std::min(yll, y);
+    }
+  }
+  const int width = std::abs(xur-xll);
+  const int height = std::abs(yur-yll);
+  int hpwl = width + height;
+  return hpwl;
 }
 
 }

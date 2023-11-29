@@ -16,8 +16,7 @@ namespace rcm {
         db{ord::OpenRoad::openRoad()->getDb()}
         {}
 
-    void Abacus::abacus(int x1, int y1, int x2, int y2) {
-        std::cout<<"Initializing Abacus ..."<<std::endl;
+    std::vector<odb::dbInst *> Abacus::abacus(int x1, int y1, int x2, int y2) {
         int area_x_min, area_x_max, area_y_min, area_y_max;
         if (x1 < x2) {
             area_x_min = x1;
@@ -52,7 +51,11 @@ namespace rcm {
                 if (area_x_min <= rect.xMin() && rect.xMax() <= area_x_max
                     && area_y_min <= rect.yMin() && rect.yMax() <= area_y_max
                 ) {
-                    cells.push_back(make_pair(rect, inst));
+                    if(inst->getPlacementStatus().isFixed()) {
+                        fixed_cells.push_back(rect);
+                    } else {
+                        cells.push_back(make_pair(rect, inst));
+                    }
                 } else {
                     fixed_cells.push_back(rect);
                 }
@@ -84,15 +87,14 @@ namespace rcm {
 
 
 
-        abacus(rows, splits_per_row, &cells);
+        return abacus(rows, splits_per_row, &cells);
     }
 
-    void Abacus::abacus(
+    std::vector<odb::dbInst *> Abacus::abacus(
         vector<Row> const& rows,
         vector<vector<Split>> const& splits_per_row,
         vector<Cell>* cells
     ) {
-        std::cout<<"Running abacus..."<<std::endl;
         sort(cells->begin(), cells->end(),
             [&](Cell const& a, Cell const& b) {
                 return a.first.xMin() < b.first.xMin();
@@ -227,7 +229,7 @@ namespace rcm {
                     .push_back(best_new_cluster);
             }
         }
-
+        std::vector<odb::dbInst *> retorno;
         int accum_split_i = 0;
         for (int row_i = 0; row_i < rows.size(); row_i++) {
             vector<Split> const& splits = splits_per_row[row_i];
@@ -246,7 +248,9 @@ namespace rcm {
 
                         Rect const& row = rows[row_i].first;
 
-                        set_pos(inst, x, row.yMin());
+                        if(set_pos(inst, x, row.yMin())) {
+                            retorno.push_back(inst);
+                        }
 
                         x += cell.dx();
                         split_cell_i++;
@@ -256,6 +260,7 @@ namespace rcm {
                 accum_split_i += 1;
             }
         }
+        return retorno;
     }
 
     bool Abacus::abacus_try_add_cell(
@@ -333,8 +338,12 @@ namespace rcm {
         return true;
     }
 
-    void Abacus::set_pos(dbInst* cell, int x, int y) {
+    bool Abacus::set_pos(dbInst* cell, int x, int y) {
+        int prev_x, prev_y;
+        cell->getLocation(prev_x, prev_y);
+        if (prev_x == x && prev_y == y) return false;
         cell->setLocation(x, y);
+        return true;
     };
 
     bool Abacus::collide(int pos1_min, int pos1_max, int pos2_min, int pos2_max) {

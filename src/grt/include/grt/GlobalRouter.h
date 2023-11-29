@@ -194,6 +194,7 @@ class GlobalRouter
   // See class IncrementalGRoute.
   void addDirtyNet(odb::dbNet* net);
   void removeDirtyNet(odb::dbNet* net);
+  void clearDirtyNets() { dirty_nets_.clear(); }
   std::set<odb::dbNet*> getDirtyNets() { return dirty_nets_; }
   // check_antennas
   void makeNetWires();
@@ -232,6 +233,8 @@ class GlobalRouter
   void boxToGlobalRouting(const odb::Rect& route_bds, int layer, GRoute& route);
 
   // Report wire length
+  int computeNetWirelength(odb::dbNet* db_net);
+  long computeWirelength();
   void reportNetWireLength(odb::dbNet* net,
                            bool global_route,
                            bool detailed_route,
@@ -266,8 +269,7 @@ class GlobalRouter
                                 float reduction_percentage);
   void applyObstructionAdjustment(const odb::Rect& obstruction,
                                   odb::dbTechLayer* tech_layer);
-  int computeNetWirelength(odb::dbNet* db_net);
-  void computeWirelength();
+
   std::vector<Pin*> getAllPorts();
   void computeTrackConsumption(const Net* net,
                                int& track_consumption,

@@ -214,7 +214,6 @@ CellMoveRouter::Swap_and_Rerout(odb::dbInst * moving_cell) {
   std::vector<odb::dbNet*>  affected_nets;
   std::vector<int>  nets_Bbox_Xs;
   std::vector<int>  nets_Bbox_Ys;
-  gui::Gui* gui = gui::Gui::get();
 
   //Finding the cell's nets bounding boxes
   int before_hwpl = 0;
@@ -283,7 +282,7 @@ CellMoveRouter::Swap_and_Rerout(odb::dbInst * moving_cell) {
     xll = std::min(xll, gcell.second.xMin());
     yll = std::min(yll, gcell.second.yMin());
   }
-  bool regect = false;
+
   int after_hwpl = 0;
   for(auto pin : moving_cell->getITerms())
   {
@@ -368,14 +367,7 @@ std::pair<int, int> CellMoveRouter::nets_Bboxes_median(std::vector<int> Xs, std:
   int yur = Ys[median_pos_Y];
 
   int x = (xll + xur)/2;
-  int y = (yll + yur)/2; 
-
-  //std::cout<<"Optimal Region bounding box:\nxll : " << xll << "; xur : " << xur << " \nyll : " << yll << "; yur : "<< yur<<"\n ";
-  //std::cout<<"Optimal Point: x: " << x << ", y: " << y << "\n";
-
-  //drawRectangle(x, y, x+100, y+100);
-
-  rectangleRender_->addRectangle(odb::Rect(x, y, x+100, y+100));
+  int y = (yll + yur)/2;
 
   return std::pair<int, int> (x, y);
 }
